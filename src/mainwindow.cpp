@@ -16,6 +16,7 @@
 #include "dialogs/layerpropertiesdialog.h"
 #include "dialogs/curvesdialog.h"
 #include "dialogs/settingsdialog.h"
+#include "dialogs/previewdialog.h"
 #include "tools/tool.h"
 #include "tools/brushtool.h"
 #include "tools/erasertool.h"
@@ -2230,20 +2231,22 @@ void MainWindow::applyEffect(int effectIndex) {
     std::unique_ptr<Effect> effect;
     switch (effectIndex) {
     case 0: {
-        auto *e = new BlurEffect;
-        bool ok;
-        int r = QInputDialog::getInt(this, "Flou gaussien", "Rayon :", e->radius(), 1, 100, 1, &ok);
-        if (!ok) return;
-        e->setRadius(r);
+        BlurEffect def;
+        PreviewDialog dlg(TR("Flou gaussien"), layer->image(),
+            {{TR("Rayon"), 1, 100, def.radius(), ""}},
+            [](const QImage &src, const QVector<int> &v) { BlurEffect t; t.setRadius(v[0]); return t.apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        auto *e = new BlurEffect; e->setRadius(dlg.values()[0]);
         effect.reset(e);
         break;
     }
     case 1: {
-        auto *e = new SharpenEffect;
-        bool ok;
-        int a = QInputDialog::getInt(this, "Netteté", "Quantité :", e->amount(), 1, 100, 1, &ok);
-        if (!ok) return;
-        e->setAmount(a);
+        SharpenEffect def;
+        PreviewDialog dlg(TR("Netteté"), layer->image(),
+            {{TR("Quantité"), 1, 100, def.amount(), ""}},
+            [](const QImage &src, const QVector<int> &v) { SharpenEffect t; t.setAmount(v[0]); return t.apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        auto *e = new SharpenEffect; e->setAmount(dlg.values()[0]);
         effect.reset(e);
         break;
     }
@@ -2274,11 +2277,12 @@ void MainWindow::applyEffect(int effectIndex) {
         break;
     }
     case 6: {
-        auto *e = new PixelateEffect;
-        bool ok;
-        int s = QInputDialog::getInt(this, "Pixéliser", "Taille de cellule :", e->cellSize(), 2, 100, 1, &ok);
-        if (!ok) return;
-        e->setCellSize(s);
+        PixelateEffect def;
+        PreviewDialog dlg(TR("Pixéliser"), layer->image(),
+            {{TR("Taille de cellule"), 2, 100, def.cellSize(), ""}},
+            [](const QImage &src, const QVector<int> &v) { PixelateEffect t; t.setCellSize(v[0]); return t.apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        auto *e = new PixelateEffect; e->setCellSize(dlg.values()[0]);
         effect.reset(e);
         break;
     }
@@ -2722,14 +2726,14 @@ void MainWindow::applyAdjustment(int adjustmentIndex) {
 
     switch (adjustmentIndex) {
     case 0: {
-        BrightnessContrast adj;
-        bool ok;
-        int b = QInputDialog::getInt(this, "Luminosité", "Luminosité (-100 à 100) :", 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        adj.setBrightness(b);
-        int c = QInputDialog::getInt(this, "Contraste", "Contraste (-100 à 100) :", 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        adj.setContrast(c);
+        auto build = [](const QVector<int> &v) {
+            BrightnessContrast a; a.setBrightness(v[0]); a.setContrast(v[1]); return a;
+        };
+        PreviewDialog dlg(TR("Luminosité / Contraste"), layer->image(),
+            {{TR("Luminosité"), -100, 100, 0, ""}, {TR("Contraste"), -100, 100, 0, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        BrightnessContrast adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable {
             return adj.apply(image);
         }, adj.name());
@@ -2748,17 +2752,17 @@ void MainWindow::applyAdjustment(int adjustmentIndex) {
         break;
     }
     case 2: {
-        Levels adj;
-        bool ok;
-        int ib = QInputDialog::getInt(this, "Niveaux", "Noir d'entrée (0-255) :", 0, 0, 255, 1, &ok);
-        if (!ok) return;
-        adj.setInputBlack(ib);
-        int iw = QInputDialog::getInt(this, "Niveaux", "Blanc d'entrée (0-255) :", 255, 0, 255, 1, &ok);
-        if (!ok) return;
-        adj.setInputWhite(iw);
-        double g = QInputDialog::getDouble(this, "Niveaux", "Gamma :", 1.0, 0.1, 10.0, 2, &ok);
-        if (!ok) return;
-        adj.setGamma(g);
+        // Gamma slider is in percent (100 = 1.0) so it fits the integer sliders.
+        auto build = [](const QVector<int> &v) {
+            Levels a; a.setInputBlack(v[0]); a.setInputWhite(v[1]); a.setGamma(v[2] / 100.0); return a;
+        };
+        PreviewDialog dlg(TR("Niveaux"), layer->image(),
+            {{TR("Noir d'entrée"), 0, 255, 0, ""},
+             {TR("Blanc d'entrée"), 0, 255, 255, ""},
+             {TR("Gamma"), 10, 1000, 100, "%"}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        Levels adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable {
             return adj.apply(image);
         }, adj.name());
@@ -2782,22 +2786,24 @@ void MainWindow::applyAdjustment(int adjustmentIndex) {
         break;
     }
     case 5: {
-        Sepia adj;
-        bool ok;
-        int i = QInputDialog::getInt(this, "Sépia", "Intensité (0-100) :", 80, 0, 100, 1, &ok);
-        if (!ok) return;
-        adj.setIntensity(i);
+        auto build = [](const QVector<int> &v) { Sepia a; a.setIntensity(v[0]); return a; };
+        PreviewDialog dlg(TR("Sépia"), layer->image(),
+            {{TR("Intensité"), 0, 100, 80, "%"}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        Sepia adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable {
             return adj.apply(image);
         }, adj.name());
         break;
     }
     case 6: {
-        Posterize adj;
-        bool ok;
-        int l = QInputDialog::getInt(this, "Postériser", "Niveaux (2-64) :", 4, 2, 64, 1, &ok);
-        if (!ok) return;
-        adj.setLevels(l);
+        auto build = [](const QVector<int> &v) { Posterize a; a.setLevels(v[0]); return a; };
+        PreviewDialog dlg(TR("Postériser"), layer->image(),
+            {{TR("Niveaux"), 2, 64, 4, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        Posterize adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable {
             return adj.apply(image);
         }, adj.name());
@@ -2812,17 +2818,16 @@ void MainWindow::applyAdjustment(int adjustmentIndex) {
         break;
     }
     case 8: {
-        ColorBalance adj;
-        bool ok;
-        int cr = QInputDialog::getInt(this, "Balance des couleurs", "Cyan/Rouge (-100 à 100) :", 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        adj.setCyanRed(cr);
-        int mg = QInputDialog::getInt(this, "Balance des couleurs", "Magenta/Vert (-100 à 100) :", 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        adj.setMagentaGreen(mg);
-        int yb = QInputDialog::getInt(this, "Balance des couleurs", "Jaune/Bleu (-100 à 100) :", 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        adj.setYellowBlue(yb);
+        auto build = [](const QVector<int> &v) {
+            ColorBalance a; a.setCyanRed(v[0]); a.setMagentaGreen(v[1]); a.setYellowBlue(v[2]); return a;
+        };
+        PreviewDialog dlg(TR("Balance des couleurs"), layer->image(),
+            {{TR("Cyan / Rouge"), -100, 100, 0, ""},
+             {TR("Magenta / Vert"), -100, 100, 0, ""},
+             {TR("Jaune / Bleu"), -100, 100, 0, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        ColorBalance adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable {
             return adj.apply(image);
         }, adj.name());
@@ -2862,30 +2867,37 @@ void MainWindow::applyAdjustment(int adjustmentIndex) {
         break;
     }
     case 10: {   // Exposure
-        bool ok;
-        int e = QInputDialog::getInt(this, TR("Exposition"), TR("Exposition (-100 à 100) :"), 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        Exposure adj; adj.setExposure(e);
+        auto build = [](const QVector<int> &v) { Exposure a; a.setExposure(v[0]); return a; };
+        PreviewDialog dlg(TR("Exposition"), layer->image(),
+            {{TR("Exposition"), -100, 100, 0, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        Exposure adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable { return adj.apply(image); }, adj.name());
         break;
     }
     case 11: {   // Highlights / Shadows
-        bool ok;
-        int hi = QInputDialog::getInt(this, TR("Hautes / Basses lumières"), TR("Hautes lumières (-100 à 100) :"), 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        int sh = QInputDialog::getInt(this, TR("Hautes / Basses lumières"), TR("Basses lumières (-100 à 100) :"), 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        HighlightsShadows adj; adj.setHighlights(hi); adj.setShadows(sh);
+        auto build = [](const QVector<int> &v) {
+            HighlightsShadows a; a.setHighlights(v[0]); a.setShadows(v[1]); return a;
+        };
+        PreviewDialog dlg(TR("Hautes / Basses lumières"), layer->image(),
+            {{TR("Hautes lumières"), -100, 100, 0, ""}, {TR("Basses lumières"), -100, 100, 0, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        HighlightsShadows adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable { return adj.apply(image); }, adj.name());
         break;
     }
     case 12: {   // Temperature / Tint
-        bool ok;
-        int t = QInputDialog::getInt(this, TR("Température / Teinte"), TR("Température (-100 froid à 100 chaud) :"), 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        int g = QInputDialog::getInt(this, TR("Température / Teinte"), TR("Teinte (-100 vert à 100 magenta) :"), 0, -100, 100, 1, &ok);
-        if (!ok) return;
-        TemperatureTint adj; adj.setTemperature(t); adj.setTint(g);
+        auto build = [](const QVector<int> &v) {
+            TemperatureTint a; a.setTemperature(v[0]); a.setTint(v[1]); return a;
+        };
+        PreviewDialog dlg(TR("Température / Teinte"), layer->image(),
+            {{TR("Température (froid → chaud)"), -100, 100, 0, ""},
+             {TR("Teinte (vert → magenta)"), -100, 100, 0, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        TemperatureTint adj = build(dlg.values());
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable { return adj.apply(image); }, adj.name());
         break;
     }

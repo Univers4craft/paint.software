@@ -112,6 +112,7 @@ set(DIALOGS_SOURCES
     src/dialogs/layerpropertiesdialog.cpp
     src/dialogs/curvesdialog.cpp
     src/dialogs/settingsdialog.cpp
+    src/dialogs/previewdialog.cpp
 )
 
 set(MAIN_SOURCES

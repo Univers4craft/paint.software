@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write    # also update the rolling "continuous" GitHub Release
   pages: write
   id-token: write
 
@@ -52,6 +52,33 @@ jobs:
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTSW_VERSION="$VER"
           cmake --build build -j
           (cd build && cpack -G DEB)
+
+      - name: Update the rolling "continuous" Release
+        # On every push to main, refresh a single always-latest release with the
+        # freshly built .deb (formal milestone releases still come from vX.Y.Z tags).
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DEB=$(ls build/*.deb | head -1)
+          VERSION=$(dpkg-deb -f "$DEB" Version)
+          # Build the notes with single-quoted lines (backticks/quotes stay literal).
+          printf '%s\n' \
+            'Automatic build from the latest commit on `main`.' \
+            '' \
+            '**Install (recommended, auto-updates via APT):**' \
+            '```bash' \
+            'curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg | sudo tee /usr/share/keyrings/paint.software.gpg > /dev/null' \
+            'echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" | sudo tee /etc/apt/sources.list.d/paint.software.list' \
+            'sudo apt update && sudo apt install paint.software' \
+            '```' \
+            'Or download the `.deb` below.' \
+            > /tmp/release-notes.md
+          gh release delete continuous --yes --cleanup-tag 2>/dev/null || true
+          gh release create continuous "$DEB" \
+            --target "$GITHUB_SHA" \
+            --title "Latest build — v$VERSION" \
+            --notes-file /tmp/release-notes.md
 
       - name: Assemble APT repository
         run: |

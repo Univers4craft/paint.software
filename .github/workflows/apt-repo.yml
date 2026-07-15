@@ -4,6 +4,7 @@ name: APT repository (GitHub Pages)
 # can `apt install paint.software` and get updates via `apt upgrade`.
 on:
   push:
+    branches: [ main ]     # every change to main auto-publishes a new version
     tags: ['v*']
   workflow_dispatch:
 
@@ -31,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0     # full history so the commit count (patch version) is real
 
       - name: Install dependencies
         run: |
@@ -41,7 +44,12 @@ jobs:
 
       - name: Build .deb
         run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          # Auto version = <major.minor from CMakeLists>.<commit count>, so it always
+          # increases → APT sees each push to main as an available upgrade.
+          MM=$(grep -oP 'project\(PaintDali VERSION \K[0-9]+\.[0-9]+' CMakeLists.txt)
+          VER="${MM}.$(git rev-list --count HEAD)"
+          echo "Packaging version $VER"
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTSW_VERSION="$VER"
           cmake --build build -j
           (cd build && cpack -G DEB)
 

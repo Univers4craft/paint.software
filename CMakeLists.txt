@@ -206,7 +206,13 @@ install(TARGETS sample_sepia_plugin LIBRARY DESTINATION lib/paint.software/plugi
 # ---- CPack: build a Debian package with `cpack -G DEB` ----
 set(CPACK_PACKAGE_NAME "paint.software")
 set(CPACK_PACKAGE_VENDOR "Univers4craft")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+# CI passes -DPAINTSW_VERSION=<major.minor.commitcount> so every push to main
+# produces a higher version that APT sees as an upgrade; otherwise use PROJECT_VERSION.
+if(DEFINED PAINTSW_VERSION AND NOT PAINTSW_VERSION STREQUAL "")
+  set(CPACK_PACKAGE_VERSION "${PAINTSW_VERSION}")
+else()
+  set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+endif()
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Open-source Paint.NET clone for Linux (C++/Qt6)")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/Univers4craft/paint.software")
 set(CPACK_PACKAGE_CONTACT "Univers4craft <Univers4craft@users.noreply.github.com>")
@@ -221,5 +227,5 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}")
 # resolves the correct package names for the build distro (e.g. the libqt6*t64
 # variants on Ubuntu 24.04), so we do not hard-code a fragile fallback list.
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-set(CPACK_PACKAGE_FILE_NAME "paint.software_${PROJECT_VERSION}_amd64")
+set(CPACK_PACKAGE_FILE_NAME "paint.software_${CPACK_PACKAGE_VERSION}_amd64")
 include(CPack)

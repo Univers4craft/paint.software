@@ -17,6 +17,8 @@
 #include "dialogs/curvesdialog.h"
 #include "dialogs/settingsdialog.h"
 #include "dialogs/previewdialog.h"
+#include "plugins/pluginmanager.h"
+#include "plugins/plugineffect.h"
 #include "tools/tool.h"
 #include "tools/brushtool.h"
 #include "tools/erasertool.h"
@@ -94,6 +96,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QUrl>
+#include <QDesktopServices>
 #include <QClipboard>
 #include <QInputDialog>
 #include <QScrollArea>
@@ -552,9 +555,71 @@ void MainWindow::createMenus() {
     stylizeMenu->addAction(TR("Contour..."), this, [this]() { applyEffect(34); });
     stylizeMenu->addAction(TR("Relief..."), this, [this]() { applyEffect(33); });
 
+    // External effect plugins (Effets ▸ Plugins). Entirely additive — the submenu is
+    // always present so the feature is discoverable, and lists whatever loaded.
+    fxMenu->addSeparator();
+    auto *pluginsMenu = fxMenu->addMenu(TR("Plugins"));
+    populatePluginsMenu(pluginsMenu);
+
     // paint.net has no Window/Help menus: the four utility windows plus Settings
     // and Help live as six icons on the RIGHT side of the menu bar.
     createMenuBarCornerIcons();
+}
+
+void MainWindow::populatePluginsMenu(QMenu *pluginsMenu) {
+    if (!pluginsMenu) return;
+
+    if (!m_pluginManager) {
+        m_pluginManager = std::make_unique<PluginManager>();
+        m_pluginManager->loadFrom(PluginManager::defaultPluginDirs());
+    }
+
+    const auto &effects = m_pluginManager->effects();
+    if (effects.empty()) {
+        QAction *none = pluginsMenu->addAction(TR("Aucun plugin chargé"));
+        none->setEnabled(false);
+    } else {
+        for (const auto &eff : effects) {
+            PluginEffect *raw = eff.get();
+            pluginsMenu->addAction(eff->name(), this, [this, raw]() { runPluginEffect(raw); });
+        }
+    }
+
+    pluginsMenu->addSeparator();
+    pluginsMenu->addAction(TR("Ouvrir le dossier des plugins…"), this, [this]() {
+        const QStringList dirs = PluginManager::defaultPluginDirs();
+        if (dirs.isEmpty()) return;
+        const QString target = dirs.last();   // the writable app-data plugins dir
+        QDir().mkpath(target);
+        QDesktopServices::openUrl(QUrl::fromLocalFile(target));
+    });
+}
+
+void MainWindow::runPluginEffect(PluginEffect *effect) {
+    if (!effect || !m_document) return;
+    auto *layer = m_document->activeLayer();
+    if (!layer) return;
+
+    if (effect->paramCount() == 0) {
+        applyImageOperationToTargetLayers(
+            [effect](const QImage &image) { return effect->apply(image); }, effect->name());
+        return;
+    }
+
+    QVector<PreviewDialog::Param> dlgParams;
+    for (const auto &p : effect->params())
+        dlgParams.push_back({p.label, p.minValue, p.maxValue, p.defValue, p.suffix});
+
+    PreviewDialog dlg(effect->name(), layer->image(), dlgParams,
+        [effect](const QImage &src, const QVector<int> &v) {
+            effect->setValues(v);
+            return effect->apply(src);
+        }, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    effect->setValues(dlg.values());
+    applyImageOperationToTargetLayers(
+        [effect](const QImage &image) { return effect->apply(image); }, effect->name());
 }
 
 void MainWindow::rebuildToolsPaletteTooltips() {

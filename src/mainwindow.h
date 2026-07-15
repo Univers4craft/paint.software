@@ -23,6 +23,8 @@ class LayersPanel;
 class ColorsPanel;
 class HistoryPanel;
 class ToolOptionsPanel;
+class PluginManager;
+class PluginEffect;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -92,6 +94,8 @@ private slots:
 
     // Effects
     void applyEffect(int effectIndex);
+    // Runs an external plugin effect (via the live-preview dialog if it has params).
+    void runPluginEffect(PluginEffect *effect);
 
     // Adjustments
     void applyAdjustment(int adjustmentIndex);
@@ -104,6 +108,8 @@ private slots:
 
 private:
     void createMenus();
+    // Loads external effect plugins and fills the Effects ▸ Plugins submenu.
+    void populatePluginsMenu(QMenu *pluginsMenu);
     void createToolBar();
     void createToolsPanel();
     void createDockPanels();
@@ -194,6 +200,9 @@ private:
     ColorsPanel *m_colorsPanel = nullptr;
     HistoryPanel *m_historyPanel = nullptr;
     ToolOptionsPanel *m_toolOptionsPanel = nullptr;
+
+    // External effect plugins (loaded once, owned for the app's lifetime).
+    std::unique_ptr<PluginManager> m_pluginManager;
 
     // Dock widgets (for Window menu toggle)
     QDockWidget *m_toolsDock = nullptr;

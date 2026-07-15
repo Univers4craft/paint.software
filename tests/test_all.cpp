@@ -79,6 +79,12 @@
 #include "adjustments/desaturate.h"
 #include "adjustments/colorbalance.h"
 
+#include "plugins/plugin_api.h"
+#include "plugins/plugineffect.h"
+#include "plugins/pluginmanager.h"
+#include <QLibrary>
+#include <QCoreApplication>
+
 static int g_pass = 0, g_fail = 0;
 static const char *g_section = "";
 #define SECTION(s) do { g_section = s; printf("\n== %s ==\n", s); } while(0)
@@ -116,6 +122,21 @@ static QMouseEvent moveEv(QPointF p, Qt::MouseButton b = Qt::LeftButton) {
 }
 static QMouseEvent releaseEv(QPointF p, Qt::MouseButton b = Qt::LeftButton) {
     return QMouseEvent(QEvent::MouseButtonRelease, p, p, b, Qt::NoButton, Qt::NoModifier);
+}
+
+// A plugin-style process function (plain C signature): blend each RGB channel
+// toward its inverse by values[0] percent. Used to test the plugin wrapper.
+static void testInvertProcess(unsigned char *rgba, int w, int h,
+                              const int *values, int valueCount, void *userData) {
+    (void)userData;
+    int amount = (valueCount > 0) ? values[0] : 100;
+    for (long i = 0; i < (long)w * h; ++i) {
+        unsigned char *p = rgba + i * 4;
+        for (int c = 0; c < 3; ++c) {
+            int inv = 255 - p[c];
+            p[c] = (unsigned char)((p[c] * (100 - amount) + inv * amount) / 100);
+        }
+    }
 }
 
 static void strokeTool(Tool *tool, CanvasWidget &canvas, QPointF a, QPointF b) {
@@ -897,6 +918,44 @@ int main(int argc, char **argv) {
             CHECK(doc.layerAt(1)->image().pixelColor(10,10).red() > 150, "pixel content restored");
         }
         QFile::remove(path);
+    }
+
+    // ---------- PLUGIN SYSTEM ----------
+    SECTION("Plugin effect wrapper runs a plugin process function");
+    {
+        PswParam prm{ "Amount", 0, 100, 100, "%" };
+        PswEffect desc{ "Test Invert", "Photo", 1, &prm, &testInvertProcess, nullptr };
+        PluginEffect eff(desc, std::shared_ptr<QLibrary>());   // no library needed for this test
+        CHECK(eff.name() == "Test Invert", "plugin name copied out of C struct");
+        CHECK(eff.paramCount() == 1, "plugin param count");
+
+        QImage img = makeImage(8, 8, QColor(10, 20, 30, 255));
+        eff.setValues({100});
+        QColor c = eff.apply(img).pixelColor(4, 4);
+        CHECK(c.red() == 245 && c.green() == 235 && c.blue() == 225, "full invert applied via plugin");
+        eff.setValues({0});
+        QColor c0 = eff.apply(img).pixelColor(4, 4);
+        CHECK(c0.red() == 10 && c0.green() == 20 && c0.blue() == 30, "amount 0 leaves pixels unchanged");
+    }
+
+    SECTION("Plugin manager loads an external .so if present (non-fatal if absent)");
+    {
+        const QString dir = QCoreApplication::applicationDirPath() + "/plugins";
+        const QString so = dir + "/sample_sepia_plugin.so";
+        if (QFile::exists(so)) {
+            PluginManager mgr;
+            mgr.loadFrom({dir});
+            CHECK(!mgr.empty(), "sample plugin discovered and loaded");
+            if (!mgr.empty()) {
+                auto eff = mgr.effects().front();
+                QImage img = makeImage(6, 6, QColor(100, 150, 200, 255));
+                QImage out = eff->apply(img).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                CHECK(out.size() == img.size(), "plugin effect returns a same-size image");
+                CHECK(imagesDiffer(img, out), "sepia plugin actually changed the pixels");
+            }
+        } else {
+            printf("  (skipped: build/plugins/sample_sepia_plugin.so not present)\n");
+        }
     }
 
     // ---------- RESULT ----------

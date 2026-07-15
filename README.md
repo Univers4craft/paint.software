@@ -37,6 +37,7 @@ maintainer's final approval (see [Contributing](#-contributing--en)).
   Posterize, Color Balance, Exposure, Highlights/Shadows, Temperature/Tint, Invert…
 - **30+ effects:** blurs, sharpen, emboss, edge detect, oil paint, pixelate, distortions, drop shadow…
 - **Live-preview dialogs** for adjustments and effects (see the result as you drag the sliders)
+- **Plugin system** — load external effect plugins (native C ABI) that appear under Effets ▸ Plugins, just like Paint.NET ([how to write one](plugins/README.md))
 - **Selections** with feather / grow / shrink, confined editing, and marquee move
 - **Non-destructive history** with click-to-navigate undo/redo, plus autosave / crash recovery
 - **UI in French & English**, light & dark themes matching Paint.NET
@@ -113,6 +114,7 @@ fusionnée après **mon approbation finale** en tant que mainteneur (voir [Contr
 - **30+ effets :** flous, netteté, relief, détection de contours, peinture à l'huile, pixelisation,
   distorsions, ombre portée…
 - **Dialogues avec aperçu en direct** pour les ajustements et effets (le résultat s'affiche en glissant les curseurs)
+- **Système de plugins** — charge des effets externes (ABI C native) qui apparaissent sous Effets ▸ Plugins, comme Paint.NET ([comment en écrire un](plugins/README.md))
 - **Sélections** avec adoucissement / dilatation / contraction, édition confinée et déplacement du contour
 - **Historique non destructif** avec navigation au clic, plus sauvegarde auto / récupération après plantage
 - **Interface en français & anglais**, thèmes clair & sombre calqués sur Paint.NET

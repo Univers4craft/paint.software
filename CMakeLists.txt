@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(PaintDali VERSION 1.0.0 LANGUAGES CXX)
+project(PaintDali VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -115,6 +115,11 @@ set(DIALOGS_SOURCES
     src/dialogs/previewdialog.cpp
 )
 
+set(PLUGINS_SOURCES
+    src/plugins/pluginmanager.cpp
+    src/plugins/plugineffect.cpp
+)
+
 set(MAIN_SOURCES
     src/main.cpp
     src/mainwindow.cpp
@@ -137,6 +142,7 @@ set(ALL_SOURCES
     ${EFFECTS_SOURCES}
     ${ADJUSTMENTS_SOURCES}
     ${DIALOGS_SOURCES}
+    ${PLUGINS_SOURCES}
     ${RESOURCES}
 )
 
@@ -164,6 +170,7 @@ set(NONMAIN_SOURCES
     ${EFFECTS_SOURCES}
     ${ADJUSTMENTS_SOURCES}
     ${DIALOGS_SOURCES}
+    ${PLUGINS_SOURCES}
     src/toolicons.cpp
     src/i18n.cpp
     src/theme.cpp
@@ -177,3 +184,13 @@ add_executable(paintdotnet_tests EXCLUDE_FROM_ALL
 target_include_directories(paintdotnet_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(paintdotnet_tests PRIVATE
     Qt6::Widgets Qt6::PrintSupport Qt6::Core Qt6::Gui)
+
+# ---- Sample plugin (demonstrates the C ABI; built into build/plugins) ----
+# A MODULE library is a shared object meant to be dlopen'd, never linked against.
+add_library(sample_sepia_plugin MODULE plugins/sample/sepia_plugin.c)
+target_include_directories(sample_sepia_plugin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/plugins)
+set_target_properties(sample_sepia_plugin PROPERTIES
+    AUTOMOC OFF                                                 # plain C, no Qt
+    C_VISIBILITY_PRESET default                                 # keep psw_register_plugin exported
+    PREFIX ""                                                   # -> sample_sepia_plugin.so
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins)

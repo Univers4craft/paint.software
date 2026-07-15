@@ -40,12 +40,20 @@ void TextTool::keyPressEvent(QKeyEvent *event, CanvasWidget &canvas) {
     }
 }
 
+QFont TextTool::effectiveFont() const {
+    QFont f = m_font;
+    f.setBold(m_bold);
+    f.setItalic(m_italic);
+    f.setUnderline(m_underline);
+    return f;
+}
+
 void TextTool::drawOverlay(QPainter &painter, const CanvasWidget &canvas) {
     if (!m_editing) return;
 
     painter.save();
     QPointF wPos = canvas.canvasToWidget(m_textPos);
-    QFont scaledFont = m_font;
+    QFont scaledFont = effectiveFont();
     scaledFont.setPointSizeF(std::max(1.0, m_font.pointSizeF() * canvas.zoom()));
     painter.setFont(scaledFont);
     painter.setPen(QPen(canvas.document()->primaryColor()));
@@ -72,15 +80,16 @@ void TextTool::commitText(CanvasWidget &canvas) {
 
     QImage before = layer->image().copy();
 
+    const QFont drawFont = effectiveFont();
     QPainter painter(&layer->image());
     if (m_antialiased) painter.setRenderHint(QPainter::Antialiasing);
     clipToSelection(painter, doc);
-    painter.setFont(m_font);
+    painter.setFont(drawFont);
     painter.setPen(doc->primaryColor());
     painter.setOpacity(m_opacity / 100.0);
 
     // drawText(point,...) ignores newlines, so lay out lines manually.
-    QFontMetricsF fm(m_font);
+    QFontMetricsF fm(drawFont);
     const double lineH = fm.lineSpacing();
     double y = m_textPos.y();
     for (const QString &line : m_text.split('\n')) {

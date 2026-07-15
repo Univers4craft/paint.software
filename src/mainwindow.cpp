@@ -1554,7 +1554,9 @@ void MainWindow::newDocument() {
 
 void MainWindow::openDocument() {
     QStringList files = QFileDialog::getOpenFileNames(this, "Ouvrir une image",
-        QString(), "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;All Files (*)");
+        QString(), "Tous les formats pris en charge (*.psw *.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;"
+                   "paint.software (calques) (*.psw);;"
+                   "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;All Files (*)");
     for (const QString &f : files)
         loadDocumentInto(f);
 }
@@ -1713,18 +1715,29 @@ bool MainWindow::saveDocument() {
 bool MainWindow::saveDocumentAs() {
     QString selectedFilter;
     QString filePath = QFileDialog::getSaveFileName(this, "Enregistrer l'image",
-        QString(), "PNG (*.png);;JPEG (*.jpg *.jpeg);;BMP (*.bmp);;TIFF (*.tiff);;WebP (*.webp);;All Files (*)",
+        QString(), "paint.software - garde les calques (*.psw);;PNG (*.png);;JPEG (*.jpg *.jpeg);;"
+                   "BMP (*.bmp);;TIFF (*.tiff);;WebP (*.webp);;All Files (*)",
         &selectedFilter);
     if (filePath.isEmpty()) return false;
 
     // Ensure the file has an extension; infer it from the chosen filter.
     if (QFileInfo(filePath).suffix().isEmpty()) {
         QString ext = "png";
-        if (selectedFilter.contains("jpg")) ext = "jpg";
+        if (selectedFilter.contains("psw")) ext = "psw";
+        else if (selectedFilter.contains("jpg")) ext = "jpg";
         else if (selectedFilter.contains("bmp")) ext = "bmp";
         else if (selectedFilter.contains("tiff")) ext = "tiff";
         else if (selectedFilter.contains("webp")) ext = "webp";
         filePath += "." + ext;
+    }
+
+    // Warn when a multi-layer document is saved to a flat image format.
+    if (!Document::isNativeFormat(filePath) && m_document->layerCount() > 1) {
+        auto res = QMessageBox::question(this, TR("Aplatir les calques ?"),
+            TR("Ce format ne conserve pas les calques : l'image sera aplatie.\n"
+               "Utilisez le format .psw pour garder vos calques.\n\nContinuer ?"),
+            QMessageBox::Save | QMessageBox::Cancel, QMessageBox::Save);
+        if (res == QMessageBox::Cancel) return false;
     }
 
     if (!m_document->save(filePath)) {

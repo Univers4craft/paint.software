@@ -29,6 +29,8 @@ maintainer's final approval (see [Contributing](#-contributing--en)).
 
 ### ✨ Features
 - **Layers** with opacity, blend modes, live thumbnails, and smart merge
+- **Native `.psw` format** that saves and reloads your full layer stack (or export flat to PNG/JPEG/…)
+- **Text tool** with font, size, **bold / italic / underline**
 - **Tools:** paintbrush, pencil, eraser, paint bucket, gradient, shapes, line, text, clone stamp,
   color picker, recolor, magic wand, lasso & rectangle selection, move, zoom, pan
 - **Adjustments:** Brightness/Contrast, Hue/Saturation, Levels, Curves, Black & White, Sepia,
@@ -94,6 +96,8 @@ fusionnée après **mon approbation finale** en tant que mainteneur (voir [Contr
 
 ### ✨ Fonctionnalités
 - **Calques** avec opacité, modes de fusion, miniatures en direct et fusion intelligente
+- **Format natif `.psw`** qui enregistre et recharge toute la pile de calques (ou export à plat en PNG/JPEG/…)
+- **Outil texte** avec police, taille, **gras / italique / souligné**
 - **Outils :** pinceau, crayon, gomme, pot de peinture, dégradé, formes, ligne, texte, tampon de clonage,
   pipette, recoloration, baguette magique, lasso & sélection rectangulaire, déplacement, zoom, main
 - **Ajustements :** Luminosité/Contraste, Teinte/Saturation, Niveaux, Courbes, Noir & blanc, Sépia,

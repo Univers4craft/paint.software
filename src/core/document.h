@@ -84,6 +84,11 @@ public:
     // File I/O
     bool save(const QString &filePath);
     bool load(const QString &filePath);
+    // Native layered format (.psw) — preserves every layer, not just a flattened
+    // image. Used automatically when the path ends in ".psw".
+    bool saveNative(const QString &filePath);
+    bool loadNative(const QString &filePath);
+    static bool isNativeFormat(const QString &filePath);
     QString filePath() const { return m_filePath; }
     bool isModified() const { return m_modified; }
     void setModified(bool modified) { m_modified = modified; }

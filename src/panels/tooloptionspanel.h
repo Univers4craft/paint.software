@@ -5,6 +5,8 @@
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFontComboBox>
+#include <QToolButton>
 #include <QLabel>
 #include <QFrame>
 #include <QEvent>
@@ -39,6 +41,10 @@ private slots:
     void onSpacingChanged(int value);
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     void onVariantChanged(int index);
+    // Text tool.
+    void onFontChanged(const QFont &font);
+    void onFontSizeChanged(int value);
+    void onTextStyleChanged();
 
 private:
     void updateFromTool();
@@ -84,4 +90,12 @@ private:
 
     QLabel *m_blendModeLabel;
     QComboBox *m_blendModeCombo;
+
+    // Text tool controls.
+    QFontComboBox *m_fontCombo;
+    QLabel *m_fontSizeLabel;
+    QSpinBox *m_fontSizeSpin;
+    QToolButton *m_boldBtn;
+    QToolButton *m_italicBtn;
+    QToolButton *m_underlineBtn;
 };

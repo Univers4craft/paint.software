@@ -6,6 +6,8 @@
 #include <QColor>
 #include <QPainter>
 #include <QMouseEvent>
+#include <QDir>
+#include <QFile>
 #include <cstdio>
 #include <functional>
 
@@ -866,6 +868,35 @@ int main(int argc, char **argv) {
         strokeTool(&clone, canvas, QPointF(20,15), QPointF(25,15));
         QColor c = doc.activeLayer()->image().pixelColor(22,15);
         CHECK(c.isValid() && c.alpha() >= 0 && c.alpha() <= 255, "produces a valid pixel (no NaN cast)");
+    }
+
+    SECTION("Native .psw format preserves layers, opacity and blend mode");
+    {
+        const QString path = QDir::tempPath() + "/paintsw_roundtrip.psw";
+        {
+            Document doc(48, 32);
+            doc.activeLayer()->clear(QColor(10, 20, 30));
+            doc.activeLayer()->setName("Fond");
+            int top = doc.addLayer("Dessin");
+            { QPainter p(&doc.layerAt(top)->image()); p.fillRect(4,4,20,20, QColor(200,60,60)); p.end(); }
+            doc.layerAt(top)->setOpacity(0.5f);
+            doc.layerAt(top)->setBlendMode(BlendMode::Multiply);
+            doc.layerAt(top)->setVisible(false);
+            CHECK(doc.saveNative(path), "saveNative succeeds");
+        }
+        {
+            Document doc(1, 1);
+            CHECK(doc.loadNative(path), "loadNative succeeds");
+            CHECK(doc.width() == 48 && doc.height() == 32, "dimensions restored");
+            CHECK(doc.layerCount() == 2, "both layers restored");
+            CHECK(doc.layerAt(0)->name() == "Fond", "layer 0 name restored");
+            CHECK(doc.layerAt(1)->name() == "Dessin", "layer 1 name restored");
+            CHECK(qAbs(doc.layerAt(1)->opacity() - 0.5f) < 0.01f, "opacity restored");
+            CHECK(doc.layerAt(1)->blendMode() == BlendMode::Multiply, "blend mode restored");
+            CHECK(doc.layerAt(1)->isVisible() == false, "visibility restored");
+            CHECK(doc.layerAt(1)->image().pixelColor(10,10).red() > 150, "pixel content restored");
+        }
+        QFile::remove(path);
     }
 
     // ---------- RESULT ----------

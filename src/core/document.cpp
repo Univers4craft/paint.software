@@ -4,6 +4,11 @@
 #include <QImageWriter>
 #include <cstdlib>
 #include <QFileInfo>
+#include <QFile>
+#include <QDataStream>
+
+// Magic number for the native layered format: 'P','S','W','1'.
+static const quint32 kPswMagic = 0x50535731;
 
 Document::Document(int width, int height, QObject *parent)
     : QObject(parent), m_width(width), m_height(height), m_selection(width, height)
@@ -305,7 +310,89 @@ QImage Document::flattenVisible() const {
     return flatten();
 }
 
+bool Document::isNativeFormat(const QString &filePath) {
+    return QFileInfo(filePath).suffix().toLower() == "psw";
+}
+
+bool Document::saveNative(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) return false;
+    QDataStream out(&file);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << kPswMagic;
+    out << qint32(1);                         // format version
+    out << qint32(m_width) << qint32(m_height);
+    out << qint32(m_activeLayer);
+    out << qint32(static_cast<int>(m_layers.size()));
+    for (const auto &l : m_layers) {
+        out << l->name();
+        out << float(l->opacity());
+        out << bool(l->isVisible());
+        out << bool(l->isLocked());
+        out << qint32(static_cast<int>(l->blendMode()));
+        out << l->offset();
+        out << l->image();
+    }
+    if (out.status() != QDataStream::Ok) return false;
+    file.close();
+    m_filePath = filePath;
+    m_modified = false;
+    return true;
+}
+
+bool Document::loadNative(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) return false;
+    QDataStream in(&file);
+    in.setVersion(QDataStream::Qt_6_0);
+
+    quint32 magic = 0;
+    in >> magic;
+    if (magic != kPswMagic) return false;
+    qint32 version = 0, w = 0, h = 0, active = 0, count = 0;
+    in >> version >> w >> h >> active >> count;
+    if (w <= 0 || h <= 0 || count <= 0 || count > 4096) return false;
+
+    std::vector<std::shared_ptr<Layer>> layers;
+    layers.reserve(count);
+    for (int i = 0; i < count; ++i) {
+        QString name;
+        float opacity = 1.0f;
+        bool visible = true, locked = false;
+        qint32 blend = 0;
+        QPoint offset;
+        QImage img;
+        in >> name >> opacity >> visible >> locked >> blend >> offset >> img;
+        if (in.status() != QDataStream::Ok || img.isNull()) return false;
+        auto layer = std::make_shared<Layer>(img, name);
+        layer->setOpacity(opacity);
+        layer->setVisible(visible);
+        layer->setLocked(locked);
+        layer->setBlendMode(static_cast<BlendMode>(blend));
+        layer->setOffset(offset);
+        layers.push_back(layer);
+    }
+
+    m_width = w;
+    m_height = h;
+    m_layers = std::move(layers);
+    m_activeLayer = qBound(0, static_cast<int>(active), static_cast<int>(m_layers.size()) - 1);
+    m_selection = Selection(m_width, m_height);
+    m_history.clear();
+    m_filePath = filePath;
+    m_modified = false;
+
+    emit layersChanged();
+    emit activeLayerChanged(m_activeLayer);
+    emit sizeChanged(m_width, m_height);
+    emit documentChanged();
+    return true;
+}
+
 bool Document::save(const QString &filePath) {
+    if (isNativeFormat(filePath))
+        return saveNative(filePath);
+
     QImage flat = flatten();
 
     // Formats without an alpha channel need an opaque background so
@@ -332,6 +419,9 @@ bool Document::save(const QString &filePath) {
 }
 
 bool Document::load(const QString &filePath) {
+    if (isNativeFormat(filePath))
+        return loadNative(filePath);
+
     QImageReader reader(filePath);
     QImage image = reader.read();
     if (image.isNull()) return false;

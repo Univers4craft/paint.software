@@ -4,6 +4,7 @@
 #include "tools/gradienttool.h"
 #include "tools/linetool.h"
 #include "tools/magicwandtool.h"
+#include "tools/texttool.h"
 #include "core/layer.h"
 #include "toolicons.h"
 #include "i18n.h"
@@ -140,6 +141,47 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     connect(m_blendModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onBlendModeChanged);
 
+    // --- Text tool: font family, size, and B / I / U ---
+    m_fontCombo = new QFontComboBox;
+    m_fontCombo->setFixedHeight(20);
+    m_fontCombo->setFixedWidth(150);
+    m_fontCombo->setToolTip(TR("Police"));
+    layout->addWidget(m_fontCombo);
+    connect(m_fontCombo, &QFontComboBox::currentFontChanged, this, &ToolOptionsPanel::onFontChanged);
+
+    m_fontSizeLabel = new QLabel(TR("Taille :"));
+    m_fontSizeLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_fontSizeLabel);
+    m_fontSizeSpin = new QSpinBox;
+    m_fontSizeSpin->setRange(1, 500);
+    m_fontSizeSpin->setValue(24);
+    m_fontSizeSpin->setFixedWidth(52);
+    m_fontSizeSpin->setFixedHeight(20);
+    layout->addWidget(m_fontSizeSpin);
+    connect(m_fontSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &ToolOptionsPanel::onFontSizeChanged);
+
+    auto makeStyleButton = [this](const QString &text, const QString &tip, bool italic, bool underline) {
+        auto *b = new QToolButton;
+        b->setCheckable(true);
+        b->setText(text);
+        b->setToolTip(tip);
+        b->setFixedSize(22, 20);
+        QFont f = b->font();
+        f.setBold(true);
+        f.setItalic(italic);
+        f.setUnderline(underline);
+        b->setFont(f);
+        connect(b, &QToolButton::toggled, this, &ToolOptionsPanel::onTextStyleChanged);
+        return b;
+    };
+    m_boldBtn = makeStyleButton("B", TR("Gras"), false, false);
+    m_italicBtn = makeStyleButton("I", TR("Italique"), true, false);
+    m_underlineBtn = makeStyleButton("U", TR("Souligné"), false, true);
+    layout->addWidget(m_boldBtn);
+    layout->addWidget(m_italicBtn);
+    layout->addWidget(m_underlineBtn);
+
     // --- Antialiasing ---
     m_antialiasCheck = new QCheckBox(TR("Anticrénelage"));
     m_antialiasCheck->setStyleSheet("font-size: 11px;");
@@ -250,6 +292,18 @@ void ToolOptionsPanel::updateFromTool() {
         m_fillCombo->blockSignals(false);
     }
 
+    if (auto *text = dynamic_cast<TextTool*>(m_tool)) {
+        m_fontCombo->blockSignals(true);
+        m_fontCombo->setCurrentFont(QFont(text->fontFamily()));
+        m_fontCombo->blockSignals(false);
+        m_fontSizeSpin->blockSignals(true);
+        m_fontSizeSpin->setValue(text->fontSize());
+        m_fontSizeSpin->blockSignals(false);
+        m_boldBtn->blockSignals(true);      m_boldBtn->setChecked(text->bold());           m_boldBtn->blockSignals(false);
+        m_italicBtn->blockSignals(true);    m_italicBtn->setChecked(text->italic());       m_italicBtn->blockSignals(false);
+        m_underlineBtn->blockSignals(true); m_underlineBtn->setChecked(text->underline()); m_underlineBtn->blockSignals(false);
+    }
+
     populateVariantCombo();
 
     // Show only the controls that apply to this tool.
@@ -279,6 +333,15 @@ void ToolOptionsPanel::updateFromTool() {
     m_variantCombo->setVisible(hasVariant);
     m_blendModeLabel->setVisible(t == ToolType::Brush);
     m_blendModeCombo->setVisible(t == ToolType::Brush);
+
+    const bool hasText = (t == ToolType::Text);
+    m_fontCombo->setVisible(hasText);
+    m_fontSizeLabel->setVisible(hasText);
+    m_fontSizeSpin->setVisible(hasText);
+    m_boldBtn->setVisible(hasText);
+    m_italicBtn->setVisible(hasText);
+    m_underlineBtn->setVisible(hasText);
+
     m_antialiasCheck->setVisible(hasAA);
 }
 
@@ -356,6 +419,29 @@ void ToolOptionsPanel::onSpacingChanged(int value) {
     if (m_tool) { m_tool->setSpacing(qMax(1, value)); emit toolOptionsChanged(); }
 }
 
+void ToolOptionsPanel::onFontChanged(const QFont &font) {
+    if (auto *text = dynamic_cast<TextTool*>(m_tool)) {
+        text->setFontFamily(font.family());
+        emit toolOptionsChanged();
+    }
+}
+
+void ToolOptionsPanel::onFontSizeChanged(int value) {
+    if (auto *text = dynamic_cast<TextTool*>(m_tool)) {
+        text->setFontSize(value);
+        emit toolOptionsChanged();
+    }
+}
+
+void ToolOptionsPanel::onTextStyleChanged() {
+    if (auto *text = dynamic_cast<TextTool*>(m_tool)) {
+        text->setBold(m_boldBtn->isChecked());
+        text->setItalic(m_italicBtn->isChecked());
+        text->setUnderline(m_underlineBtn->isChecked());
+        emit toolOptionsChanged();
+    }
+}
+
 void ToolOptionsPanel::retranslate() {
     m_brushSizeLabel->setText(TR("Largeur :"));
     m_hardnessLabel->setText(TR("Dureté :"));
@@ -364,6 +450,11 @@ void ToolOptionsPanel::retranslate() {
     m_opacityLabel->setText(TR("Opacité :"));
     m_fillLabel->setText(TR("Remplissage :"));
     m_blendModeLabel->setText(TR("Mode :"));
+    m_fontSizeLabel->setText(TR("Taille :"));
+    m_fontCombo->setToolTip(TR("Police"));
+    m_boldBtn->setToolTip(TR("Gras"));
+    m_italicBtn->setToolTip(TR("Italique"));
+    m_underlineBtn->setToolTip(TR("Souligné"));
     m_antialiasCheck->setText(TR("Anticrénelage"));
 
     const int fill = m_fillCombo->currentIndex();

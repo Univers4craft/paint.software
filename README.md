@@ -42,6 +42,13 @@ maintainer's final approval (see [Contributing](#-contributing--en)).
 - **UI in French & English**, light & dark themes matching Paint.NET
 - **Multi-document**, rulers (px / inches / cm), and infinite canvas
 
+### 🤔 Why paint.software? (a Paint.NET alternative for Linux)
+If you miss **Paint.NET on Linux**, paint.software gives you the same simple, layer-based
+workflow **natively** — no Wine, no .NET runtime, no virtual machine. It's lighter than GIMP or
+Krita for quick edits and touch-ups, keeps the familiar Paint.NET layout, and unlike Paint.NET it
+is **fully open source** (MIT) and builds from source on any distro. A native
+**Paint.NET clone / Pinta-style editor** for Ubuntu, Linux Mint, Debian, Fedora and friends.
+
 ### 🛠️ Build from source
 Requirements: a C++17 compiler, **CMake ≥ 3.16**, and **Qt 6** (Widgets, Gui, Core, PrintSupport).
 
@@ -110,6 +117,13 @@ fusionnée après **mon approbation finale** en tant que mainteneur (voir [Contr
 - **Historique non destructif** avec navigation au clic, plus sauvegarde auto / récupération après plantage
 - **Interface en français & anglais**, thèmes clair & sombre calqués sur Paint.NET
 - **Multi-documents**, règles (px / pouces / cm) et canevas infini
+
+### 🤔 Pourquoi paint.software ? (une alternative à Paint.NET pour Linux)
+Si **Paint.NET vous manque sous Linux**, paint.software offre le même flux de travail simple à base
+de calques, **en natif** — sans Wine, sans runtime .NET, sans machine virtuelle. Plus léger que GIMP
+ou Krita pour les retouches rapides, il garde la disposition familière de Paint.NET, et contrairement
+à Paint.NET il est **entièrement open source** (MIT) et se compile sur n'importe quelle distribution.
+Un **clone de Paint.NET / éditeur façon Pinta** natif pour Ubuntu, Linux Mint, Debian, Fedora et compagnie.
 
 ### 🛠️ Compiler depuis les sources
 Prérequis : un compilateur C++17, **CMake ≥ 3.16** et **Qt 6** (Widgets, Gui, Core, PrintSupport).

@@ -9,6 +9,10 @@
   [![Qt6](https://img.shields.io/badge/Qt-6-41CD52.svg)](https://www.qt.io/)
 </div>
 
+<div align="center">
+  <img src="docs/screenshot.png" alt="paint.software running on Linux — dark theme with layers, color wheel and tool panels" width="900">
+</div>
+
 > **Keywords:** paint.net clone · paint.net for Linux · paint dot net alternative · open-source image editor · photo editor · raster graphics editor · Qt6 · C++
 
 ---

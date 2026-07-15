@@ -65,6 +65,7 @@ sudo apt install paint.software
 sudo apt install ./paint.software_*_amd64.deb
 ```
 Either way it installs the `paintdotnet` command, a desktop launcher, and a bundled sample plugin.
+*(A GPG-signed repo — no `[trusted=yes]` — is supported too; see [SIGNING.md](SIGNING.md).)*
 
 ### 🛠️ Build from source
 Requirements: a C++17 compiler, **CMake ≥ 3.16**, and **Qt 6** (Widgets, Gui, Core, PrintSupport).
@@ -158,6 +159,7 @@ sudo apt install paint.software
 sudo apt install ./paint.software_*_amd64.deb
 ```
 Dans les deux cas : commande `paintdotnet`, lanceur dans le menu, et un plugin d'exemple.
+*(Un dépôt signé GPG — sans `[trusted=yes]` — est aussi géré ; voir [SIGNING.md](SIGNING.md).)*
 
 ### 🛠️ Compiler depuis les sources
 Prérequis : un compilateur C++17, **CMake ≥ 3.16** et **Qt 6** (Widgets, Gui, Core, PrintSupport).

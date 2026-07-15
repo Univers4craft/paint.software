@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paint.software — APT repository</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+         max-width: 780px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
+  h1 { margin-bottom: .2rem; }
+  .sub { opacity: .75; margin-top: 0; }
+  pre { background: #1e1e1e; color: #eee; padding: 1rem; border-radius: 8px;
+        overflow-x: auto; font-size: .9rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  a { color: #3578ff; }
+  .badge { display:inline-block; background:#1f9d55; color:#fff; border-radius:6px;
+           padding:.1rem .5rem; font-size:.8rem; }
+</style>
+</head>
+<body>
+  <h1>paint.software</h1>
+  <p class="sub">Open-source Paint.NET clone for Linux — <span class="badge">signed</span> APT repository</p>
+
+  <h2>Install via APT (Debian / Ubuntu / Linux Mint)</h2>
+  <p>Add the signed repository once, then install and get updates like any other package:</p>
+  <pre><code>curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg \
+  | sudo tee /usr/share/keyrings/paint.software.gpg &gt; /dev/null
+echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" \
+  | sudo tee /etc/apt/sources.list.d/paint.software.list
+sudo apt update
+sudo apt install paint.software</code></pre>
+
+  <p>Updates then come with <code>sudo apt update &amp;&amp; sudo apt upgrade</code>.</p>
+
+  <h2>Or install a single .deb</h2>
+  <p>Download the latest <code>.deb</code> from the
+     <a href="https://github.com/Univers4craft/paint.software/releases">Releases page</a>, then:</p>
+  <pre><code>sudo apt install ./paint.software_*_amd64.deb</code></pre>
+
+  <p><a href="https://github.com/Univers4craft/paint.software">Project on GitHub</a></p>
+</body>
+</html>

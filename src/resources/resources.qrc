@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>paintdali-logo.png</file>
+    </qresource>
+</RCC>

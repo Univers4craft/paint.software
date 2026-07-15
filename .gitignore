@@ -1,0 +1,30 @@
+# Build output
+/build/
+build*/
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*_autogen/
+
+# Qt
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.user
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store

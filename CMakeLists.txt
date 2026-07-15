@@ -1,0 +1,178 @@
+cmake_minimum_required(VERSION 3.16)
+project(PaintDali VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui PrintSupport)
+
+set(CORE_SOURCES
+    src/core/document.cpp
+    src/core/layer.cpp
+    src/core/selection.cpp
+    src/core/history.cpp
+)
+
+set(CANVAS_SOURCES
+    src/canvas/canvaswidget.cpp
+)
+
+set(TOOLS_SOURCES
+    src/tools/tool.cpp
+    src/tools/brushtool.cpp
+    src/tools/erasertool.cpp
+    src/tools/penciltool.cpp
+    src/tools/filltool.cpp
+    src/tools/colorpickertool.cpp
+    src/tools/recolortool.cpp
+    src/tools/selectiontool.cpp
+    src/tools/lassotool.cpp
+    src/tools/movetool.cpp
+    src/tools/moveselectiontool.cpp
+    src/tools/zoomtool.cpp
+    src/tools/pantool.cpp
+    src/tools/texttool.cpp
+    src/tools/shapetool.cpp
+    src/tools/linetool.cpp
+    src/tools/gradienttool.cpp
+    src/tools/clonestamptool.cpp
+    src/tools/magicwandtool.cpp
+)
+
+set(PANELS_SOURCES
+    src/panels/layerspanel.cpp
+    src/panels/colorspanel.cpp
+    src/panels/historypanel.cpp
+    src/panels/tooloptionspanel.cpp
+    src/panels/imagelistbar.cpp
+)
+
+set(EFFECTS_SOURCES
+    src/effects/effect.cpp
+    src/effects/blureffect.cpp
+    src/effects/sharpeneffect.cpp
+    src/effects/noiseeffect.cpp
+    src/effects/embosseffect.cpp
+    src/effects/edgedetecteffect.cpp
+    src/effects/oilpainteffect.cpp
+    src/effects/pixelateeffect.cpp
+    src/effects/motionblureffect.cpp
+    src/effects/radialblureffect.cpp
+    src/effects/zoomblureffect.cpp
+    src/effects/surfaceblureffect.cpp
+    src/effects/unfocuseffect.cpp
+    src/effects/fragmenteffect.cpp
+    src/effects/bulgeeffect.cpp
+    src/effects/twisteffect.cpp
+    src/effects/frostedglasseffect.cpp
+    src/effects/crystalizeeffect.cpp
+    src/effects/tileeffect.cpp
+    src/effects/dentseffect.cpp
+    src/effects/polarinversioneffect.cpp
+    src/effects/medianeffect.cpp
+    src/effects/reducenoiseeffect.cpp
+    src/effects/quantizeeffect.cpp
+    src/effects/gloweffect.cpp
+    src/effects/redeyeremoveeffect.cpp
+    src/effects/softenportraiteffect.cpp
+    src/effects/vignetteeffect.cpp
+    src/effects/turbulenceeffect.cpp
+    src/effects/reliefeffect.cpp
+    src/effects/outlineeffect.cpp
+    src/effects/morphologyeffect.cpp
+    src/effects/dropshadoweffect.cpp
+)
+
+set(ADJUSTMENTS_SOURCES
+    src/adjustments/adjustment.cpp
+    src/adjustments/brightnesscontrast.cpp
+    src/adjustments/huesaturation.cpp
+    src/adjustments/levels.cpp
+    src/adjustments/curves.cpp
+    src/adjustments/invertcolors.cpp
+    src/adjustments/sepia.cpp
+    src/adjustments/posterize.cpp
+    src/adjustments/threshold.cpp
+    src/adjustments/desaturate.cpp
+    src/adjustments/colorbalance.cpp
+    src/adjustments/exposure.cpp
+    src/adjustments/highlightsshadows.cpp
+    src/adjustments/temperaturetint.cpp
+    src/adjustments/invertalpha.cpp
+)
+
+set(DIALOGS_SOURCES
+    src/dialogs/resizedialog.cpp
+    src/dialogs/canvassizedialog.cpp
+    src/dialogs/newdocumentdialog.cpp
+    src/dialogs/huesaturationdialog.cpp
+    src/dialogs/layerpropertiesdialog.cpp
+    src/dialogs/curvesdialog.cpp
+    src/dialogs/settingsdialog.cpp
+)
+
+set(MAIN_SOURCES
+    src/main.cpp
+    src/mainwindow.cpp
+    src/toolicons.cpp
+    src/i18n.cpp
+    src/theme.cpp
+    src/dockdropoverlay.cpp
+)
+
+set(RESOURCES
+    src/resources/resources.qrc
+)
+
+set(ALL_SOURCES
+    ${MAIN_SOURCES}
+    ${CORE_SOURCES}
+    ${CANVAS_SOURCES}
+    ${TOOLS_SOURCES}
+    ${PANELS_SOURCES}
+    ${EFFECTS_SOURCES}
+    ${ADJUSTMENTS_SOURCES}
+    ${DIALOGS_SOURCES}
+    ${RESOURCES}
+)
+
+add_executable(paintdotnet ${ALL_SOURCES})
+
+target_include_directories(paintdotnet PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(paintdotnet PRIVATE
+    Qt6::Widgets
+    Qt6::PrintSupport
+    Qt6::Core
+    Qt6::Gui
+)
+
+install(TARGETS paintdotnet DESTINATION bin)
+
+# ---- Test harness (headless functional tests) ----
+set(NONMAIN_SOURCES
+    ${CORE_SOURCES}
+    ${CANVAS_SOURCES}
+    ${TOOLS_SOURCES}
+    ${PANELS_SOURCES}
+    ${EFFECTS_SOURCES}
+    ${ADJUSTMENTS_SOURCES}
+    ${DIALOGS_SOURCES}
+    src/toolicons.cpp
+    src/i18n.cpp
+    src/theme.cpp
+    ${RESOURCES}
+)
+
+add_executable(paintdotnet_tests EXCLUDE_FROM_ALL
+    tests/test_all.cpp
+    ${NONMAIN_SOURCES}
+)
+target_include_directories(paintdotnet_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(paintdotnet_tests PRIVATE
+    Qt6::Widgets Qt6::PrintSupport Qt6::Core Qt6::Gui)

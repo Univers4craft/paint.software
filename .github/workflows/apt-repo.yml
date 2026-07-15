@@ -1,0 +1,73 @@
+name: APT repository (GitHub Pages)
+
+# Builds the .deb and publishes a proper APT repository to GitHub Pages, so users
+# can `apt install paint.software` and get updates via `apt upgrade`.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deployment at a time.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build qt6-base-dev libgl1-mesa-dev \
+            dpkg-dev apt-utils file
+
+      - name: Build .deb
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j
+          (cd build && cpack -G DEB)
+
+      - name: Assemble APT repository
+        run: |
+          REPO=public
+          mkdir -p "$REPO/pool/main" "$REPO/dists/stable/main/binary-amd64"
+          cp build/*.deb "$REPO/pool/main/"
+          (
+            cd "$REPO"
+            dpkg-scanpackages --arch amd64 pool/ > dists/stable/main/binary-amd64/Packages
+            gzip -9 -k -f dists/stable/main/binary-amd64/Packages
+            apt-ftparchive \
+              -o APT::FTPArchive::Release::Origin="paint.software" \
+              -o APT::FTPArchive::Release::Label="paint.software" \
+              -o APT::FTPArchive::Release::Suite="stable" \
+              -o APT::FTPArchive::Release::Codename="stable" \
+              -o APT::FTPArchive::Release::Components="main" \
+              -o APT::FTPArchive::Release::Architectures="amd64" \
+              release dists/stable > dists/stable/Release
+          )
+          cp packaging/pages-index.html "$REPO/index.html"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

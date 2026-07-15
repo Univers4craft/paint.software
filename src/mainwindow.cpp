@@ -259,6 +259,17 @@ void MainWindow::loadUiState() {
     restoreDock(m_historyDock, "ui/historyVisible", true);
     restoreDock(m_layersDock, "ui/layersVisible", true);
     restoreDock(m_colorsDock, "ui/colorsVisible", true);
+
+    // restoreState() does NOT emit dockLocationChanged, so re-apply the tools
+    // palette orientation to match the restored dock area (single thin row when
+    // docked top/bottom, 2 columns otherwise).
+    if (m_toolsDock && !m_toolsDock->isFloating()) {
+        const Qt::DockWidgetArea area = dockWidgetArea(m_toolsDock);
+        const bool horizontal = (area == Qt::TopDockWidgetArea || area == Qt::BottomDockWidgetArea);
+        layoutToolsPalette(horizontal);
+        if (horizontal)
+            QTimer::singleShot(0, this, [this]() { resizeDocks({m_toolsDock}, {30}, Qt::Vertical); });
+    }
 }
 
 void MainWindow::saveUiState() {
@@ -311,8 +322,14 @@ void MainWindow::normalizeDockLayout(QDockWidget *changedDock) {
 
     if (sameArea.size() < 2) return;
 
-    // Ensure minimum practical sizes so tools panel keeps usable width/height.
-    if (m_toolsDock) m_toolsDock->setMinimumSize(62, 240);
+    // Ensure minimum practical sizes so panels stay usable. The tools palette wants
+    // a tall minimum only when it's a vertical column (left/right); docked top/bottom
+    // it's a single short row, so a tall minimum would leave a big empty band.
+    if (m_toolsDock) {
+        const Qt::DockWidgetArea ta = dockWidgetArea(m_toolsDock);
+        const bool toolsHorizontal = (ta == Qt::TopDockWidgetArea || ta == Qt::BottomDockWidgetArea);
+        m_toolsDock->setMinimumSize(toolsHorizontal ? QSize(120, 30) : QSize(62, 240));
+    }
     if (m_historyDock) m_historyDock->setMinimumSize(190, 130);
     if (m_layersDock) m_layersDock->setMinimumSize(190, 150);
     if (m_colorsDock) m_colorsDock->setMinimumSize(190, 190);
@@ -752,6 +769,14 @@ void MainWindow::createMenuBarCornerIcons() {
                             .arg(TR(label), key, TR(what),
                                  TR("Ctrl+Maj+" ) + key + " : " + TR("replacer la fenêtre")));
         btn->setAutoRaise(true);
+        // "Active" state = a blue underline, NOT a filled blue background: the global
+        // QToolButton:checked fill hid the blue Tools/History icons (blue on blue) in
+        // dark mode. An underline keeps every icon fully visible in both themes.
+        btn->setStyleSheet(
+            "QToolButton { background: transparent; border: none;"
+            " border-bottom: 2px solid transparent; border-radius: 3px; padding: 2px 2px 0 2px; }"
+            "QToolButton:hover { background: rgba(127,127,127,0.28); }"
+            "QToolButton:checked { background: transparent; border-bottom: 2px solid #4a90d9; }");
         connect(btn, &QToolButton::clicked, this, [dock](bool on) { dock->setVisible(on); });
         connect(dock, &QDockWidget::visibilityChanged, btn, &QToolButton::setChecked);
 
@@ -1256,6 +1281,10 @@ void MainWindow::createToolsPanel() {
     connect(m_toolsDock, &QDockWidget::dockLocationChanged, this, [this](Qt::DockWidgetArea area) {
         const bool horizontal = (area == Qt::TopDockWidgetArea || area == Qt::BottomDockWidgetArea);
         layoutToolsPalette(horizontal);
+        // Setting the widget's max height isn't enough — force the dock itself to
+        // collapse to the single-row height so there's no empty band above/below.
+        if (horizontal)
+            resizeDocks({m_toolsDock}, {30}, Qt::Vertical);
         normalizeDockLayout(m_toolsDock);
     });
     connect(m_toolsDock, &QDockWidget::topLevelChanged, this, [this](bool floating) {
@@ -1278,24 +1307,34 @@ void MainWindow::layoutToolsPalette(bool horizontal) {
     const int n = m_toolButtons.size();
     for (int i = 0; i < n; ++i) {
         int row, col;
-        if (horizontal) { row = i % 2; col = i / 2; }   // 2 rows, fills columns
+        if (horizontal) { row = 0; col = i; }            // single row, left-to-right
         else            { row = i / 2; col = i % 2; }    // 2 columns, fills rows
         m_toolsGrid->addWidget(m_toolButtons[i], row, col);
     }
 
     if (horizontal) {
-        // Two fixed-height rows, columns hug the icons; absorb slack on the right.
+        // One row hugging the top: kill the vertical margins and pin the height to
+        // the icon row so the dock has no empty band above/below.
+        m_toolsGrid->setContentsMargins(1, 0, 1, 0);
+        const int rowH = 28;   // button height
         m_toolsPaletteWidget->setMinimumWidth(0);
         m_toolsPaletteWidget->setMaximumWidth(QWIDGETSIZE_MAX);
-        m_toolsPaletteWidget->setMaximumHeight(28 * 2 + 6);
-        m_toolsGrid->setColumnStretch((n + 1) / 2 + 1, 1);
+        m_toolsPaletteWidget->setMinimumHeight(rowH);
+        m_toolsPaletteWidget->setMaximumHeight(rowH);   // exact height, no slack
+        // Clear the sticky tall minimum normalizeDockLayout imposes for the vertical
+        // palette — otherwise the dock can't shrink to the single row.
+        if (m_toolsDock) m_toolsDock->setMinimumSize(0, 0);
+        for (int c = 0; c < n; ++c) m_toolsGrid->setColumnStretch(c, 0);
+        m_toolsGrid->setColumnStretch(n, 1);   // trailing column takes the slack
         m_toolsGrid->setRowStretch(0, 0);
-        m_toolsGrid->setRowStretch(1, 0);
     } else {
         // Two columns; absorb slack at the bottom.
+        m_toolsGrid->setContentsMargins(1, 2, 1, 2);
+        m_toolsPaletteWidget->setMinimumHeight(0);
         m_toolsPaletteWidget->setMaximumHeight(QWIDGETSIZE_MAX);
         m_toolsPaletteWidget->setMinimumWidth(28 * 2 + 2);
         m_toolsPaletteWidget->setMaximumWidth(200);
+        if (m_toolsDock) m_toolsDock->setMinimumSize(0, 0);
         m_toolsGrid->setColumnStretch(0, 1);
         m_toolsGrid->setColumnStretch(1, 1);
         m_toolsGrid->setRowStretch((n + 1) / 2 + 1, 1);

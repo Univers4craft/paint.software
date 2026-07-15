@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QLibrary>
+#include <QSet>
 #include <QStandardPaths>
 
 // Registration context threaded through the C ABI as the opaque `host` pointer.
@@ -75,11 +76,17 @@ void PluginManager::loadFrom(const QStringList &dirs) {
     static const QStringList kNameFilters{
         QStringLiteral("*.so"), QStringLiteral("*.dll"), QStringLiteral("*.dylib")};
 
+    // Skip a plugin whose file name we've already loaded, so the same plugin
+    // present in several search directories doesn't appear twice in the menu.
+    QSet<QString> seen;
     for (const QString &dirPath : dirs) {
         QDir dir(dirPath);
         if (!dir.exists()) continue;
         const QFileInfoList files = dir.entryInfoList(kNameFilters, QDir::Files, QDir::Name);
-        for (const QFileInfo &fi : files)
+        for (const QFileInfo &fi : files) {
+            if (seen.contains(fi.fileName())) continue;
+            seen.insert(fi.fileName());
             tryLoad(fi.absoluteFilePath());
+        }
     }
 }

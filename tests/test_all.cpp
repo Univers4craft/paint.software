@@ -920,6 +920,26 @@ int main(int argc, char **argv) {
         QFile::remove(path);
     }
 
+    SECTION("Move tool moves only the selected pixels, not the whole layer");
+    {
+        Document doc(40, 40);
+        doc.activeLayer()->clear(Qt::white);
+        { QPainter p(&doc.activeLayer()->image()); p.fillRect(5, 5, 10, 10, QColor(255, 0, 0)); p.end(); }
+        doc.activeLayer()->image().setPixelColor(35, 35, QColor(0, 0, 255));  // unselected marker
+        doc.selection().selectRect(QRect(5, 5, 10, 10));                      // select the red square
+
+        CanvasWidget canvas; canvas.setDocument(&doc);
+        MoveTool move;
+        strokeTool(&move, canvas, QPointF(10, 10), QPointF(30, 10));          // drag selection +20 in x
+
+        QImage &out = doc.activeLayer()->image();
+        CHECK(out.pixelColor(30, 10).red() > 200, "selected pixels appear at the new location");
+        CHECK(out.pixelColor(10, 10).alpha() < 10, "original selected area is now a transparent hole");
+        CHECK(out.pixelColor(35, 35).blue() > 200, "unselected pixels elsewhere did NOT move");
+        CHECK(doc.selection().boundingRect().x() >= 24 && doc.selection().boundingRect().x() <= 26,
+              "the marquee followed the pixels (~+20)");
+    }
+
     // ---------- PLUGIN SYSTEM ----------
     SECTION("Plugin effect wrapper runs a plugin process function");
     {

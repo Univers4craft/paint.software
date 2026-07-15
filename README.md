@@ -36,6 +36,7 @@ maintainer's final approval (see [Contributing](#-contributing--en)).
 - **Adjustments:** Brightness/Contrast, Hue/Saturation, Levels, Curves, Black & White, Sepia,
   Posterize, Color Balance, Exposure, Highlights/Shadows, Temperature/Tint, Invert…
 - **30+ effects:** blurs, sharpen, emboss, edge detect, oil paint, pixelate, distortions, drop shadow…
+- **Live-preview dialogs** for adjustments and effects (see the result as you drag the sliders)
 - **Selections** with feather / grow / shrink, confined editing, and marquee move
 - **Non-destructive history** with click-to-navigate undo/redo, plus autosave / crash recovery
 - **UI in French & English**, light & dark themes matching Paint.NET
@@ -104,6 +105,7 @@ fusionnée après **mon approbation finale** en tant que mainteneur (voir [Contr
   Postérisation, Balance des couleurs, Exposition, Hautes/Basses lumières, Température/Teinte, Inverser…
 - **30+ effets :** flous, netteté, relief, détection de contours, peinture à l'huile, pixelisation,
   distorsions, ombre portée…
+- **Dialogues avec aperçu en direct** pour les ajustements et effets (le résultat s'affiche en glissant les curseurs)
 - **Sélections** avec adoucissement / dilatation / contraction, édition confinée et déplacement du contour
 - **Historique non destructif** avec navigation au clic, plus sauvegarde auto / récupération après plantage
 - **Interface en français & anglais**, thèmes clair & sombre calqués sur Paint.NET

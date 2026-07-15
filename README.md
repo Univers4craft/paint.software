@@ -52,9 +52,11 @@ is **fully open source** (MIT) and builds from source on any distro. A native
 
 ### 📦 Install (Debian / Ubuntu / Linux Mint)
 
-**Recommended — APT repository** (install once, then updates come with `apt upgrade`):
+**Recommended — signed APT repository** (install once, then updates come with `apt upgrade`):
 ```bash
-echo "deb [trusted=yes] https://univers4craft.github.io/paint.software stable main" \
+curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg \
+  | sudo tee /usr/share/keyrings/paint.software.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" \
   | sudo tee /etc/apt/sources.list.d/paint.software.list
 sudo apt update
 sudo apt install paint.software
@@ -65,7 +67,7 @@ sudo apt install paint.software
 sudo apt install ./paint.software_*_amd64.deb
 ```
 Either way it installs the `paintdotnet` command, a desktop launcher, and a bundled sample plugin.
-*(A GPG-signed repo — no `[trusted=yes]` — is supported too; see [SIGNING.md](SIGNING.md).)*
+*(Maintainers: the repository signing setup is documented in [SIGNING.md](SIGNING.md).)*
 
 ### 🛠️ Build from source
 Requirements: a C++17 compiler, **CMake ≥ 3.16**, and **Qt 6** (Widgets, Gui, Core, PrintSupport).
@@ -146,9 +148,11 @@ Un **clone de Paint.NET / éditeur façon Pinta** natif pour Ubuntu, Linux Mint,
 
 ### 📦 Installer (Debian / Ubuntu / Linux Mint)
 
-**Recommandé — dépôt APT** (à ajouter une fois, puis mises à jour via `apt upgrade`) :
+**Recommandé — dépôt APT signé** (à ajouter une fois, puis mises à jour via `apt upgrade`) :
 ```bash
-echo "deb [trusted=yes] https://univers4craft.github.io/paint.software stable main" \
+curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg \
+  | sudo tee /usr/share/keyrings/paint.software.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" \
   | sudo tee /etc/apt/sources.list.d/paint.software.list
 sudo apt update
 sudo apt install paint.software
@@ -159,7 +163,7 @@ sudo apt install paint.software
 sudo apt install ./paint.software_*_amd64.deb
 ```
 Dans les deux cas : commande `paintdotnet`, lanceur dans le menu, et un plugin d'exemple.
-*(Un dépôt signé GPG — sans `[trusted=yes]` — est aussi géré ; voir [SIGNING.md](SIGNING.md).)*
+*(Mainteneurs : la configuration de signature du dépôt est documentée dans [SIGNING.md](SIGNING.md).)*
 
 ### 🛠️ Compiler depuis les sources
 Prérequis : un compilateur C++17, **CMake ≥ 3.16** et **Qt 6** (Widgets, Gui, Core, PrintSupport).

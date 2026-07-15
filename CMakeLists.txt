@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(PaintDali VERSION 1.0.0 LANGUAGES C CXX)
+project(PaintDali VERSION 1.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -194,3 +194,32 @@ set_target_properties(sample_sepia_plugin PROPERTIES
     C_VISIBILITY_PRESET default                                 # keep psw_register_plugin exported
     PREFIX ""                                                   # -> sample_sepia_plugin.so
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins)
+
+# ---- Desktop integration (installed by the package) ----
+install(FILES packaging/paint.software.desktop DESTINATION share/applications)
+install(FILES src/resources/paintdali-logo.png
+        DESTINATION share/pixmaps RENAME paint.software.png)
+# Ship the sample plugin as a system plugin so a fresh install has a working example
+# (loaded from /usr/lib/paint.software/plugins).
+install(TARGETS sample_sepia_plugin LIBRARY DESTINATION lib/paint.software/plugins)
+
+# ---- CPack: build a Debian package with `cpack -G DEB` ----
+set(CPACK_PACKAGE_NAME "paint.software")
+set(CPACK_PACKAGE_VENDOR "Univers4craft")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Open-source Paint.NET clone for Linux (C++/Qt6)")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/Univers4craft/paint.software")
+set(CPACK_PACKAGE_CONTACT "Univers4craft <Univers4craft@users.noreply.github.com>")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Univers4craft <Univers4craft@users.noreply.github.com>")
+set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}")
+# Auto-detect the exact Qt/GL runtime dependencies from the built binary. This
+# resolves the correct package names for the build distro (e.g. the libqt6*t64
+# variants on Ubuntu 24.04), so we do not hard-code a fragile fallback list.
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_PACKAGE_FILE_NAME "paint.software_${PROJECT_VERSION}_amd64")
+include(CPack)

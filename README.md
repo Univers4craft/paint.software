@@ -50,6 +50,15 @@ Krita for quick edits and touch-ups, keeps the familiar Paint.NET layout, and un
 is **fully open source** (MIT) and builds from source on any distro. A native
 **Paint.NET clone / Pinta-style editor** for Ubuntu, Linux Mint, Debian, Fedora and friends.
 
+### 📦 Install (Debian / Ubuntu / Linux Mint)
+Grab the latest **`.deb`** from the [Releases page](https://github.com/Univers4craft/paint.software/releases)
+(built automatically by CI), then:
+```bash
+sudo apt install ./paint.software_*_amd64.deb
+```
+It installs the `paintdotnet` command, a desktop launcher, and a bundled sample plugin.
+*(You can also download a fresh `.deb` from any run of the **Package (.deb)** workflow under the Actions tab.)*
+
 ### 🛠️ Build from source
 Requirements: a C++17 compiler, **CMake ≥ 3.16**, and **Qt 6** (Widgets, Gui, Core, PrintSupport).
 
@@ -126,6 +135,15 @@ de calques, **en natif** — sans Wine, sans runtime .NET, sans machine virtuell
 ou Krita pour les retouches rapides, il garde la disposition familière de Paint.NET, et contrairement
 à Paint.NET il est **entièrement open source** (MIT) et se compile sur n'importe quelle distribution.
 Un **clone de Paint.NET / éditeur façon Pinta** natif pour Ubuntu, Linux Mint, Debian, Fedora et compagnie.
+
+### 📦 Installer (Debian / Ubuntu / Linux Mint)
+Récupérez le dernier **`.deb`** sur la [page Releases](https://github.com/Univers4craft/paint.software/releases)
+(construit automatiquement par la CI), puis :
+```bash
+sudo apt install ./paint.software_*_amd64.deb
+```
+Il installe la commande `paintdotnet`, un lanceur dans le menu, et un plugin d'exemple.
+*(Vous pouvez aussi télécharger un `.deb` frais depuis n'importe quel run du workflow **Package (.deb)** dans l'onglet Actions.)*
 
 ### 🛠️ Compiler depuis les sources
 Prérequis : un compilateur C++17, **CMake ≥ 3.16** et **Qt 6** (Widgets, Gui, Core, PrintSupport).

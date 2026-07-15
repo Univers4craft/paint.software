@@ -124,7 +124,7 @@
 QString toolDescription(ToolType t);
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    setWindowTitle(TR("Sans titre - paint.software 1.0"));
+    setWindowTitle(TR("Sans titre - paint.software 1.1"));
     resize(1400, 900);
     setMinimumSize(800, 600);
     setDockNestingEnabled(true);
@@ -2989,7 +2989,7 @@ void MainWindow::updateTitle() {
     } else {
         filename = "Sans titre";
     }
-    setWindowTitle(filename + " - paint.software 1.0");
+    setWindowTitle(filename + " - paint.software 1.1");
 }
 
 void MainWindow::updateImageThumbnail() {

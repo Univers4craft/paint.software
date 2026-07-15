@@ -25,7 +25,13 @@ PluginManager::~PluginManager() {
 
 QStringList PluginManager::defaultPluginDirs() {
     QStringList dirs;
-    dirs << QCoreApplication::applicationDirPath() + QStringLiteral("/plugins");
+    const QString appDir = QCoreApplication::applicationDirPath();
+    // Next to the executable (dev builds output the bundled sample here).
+    dirs << appDir + QStringLiteral("/plugins");
+    // System plugins installed by the package, e.g. /usr/lib/paint.software/plugins
+    // when the binary lives in /usr/bin.
+    dirs << QDir::cleanPath(appDir + QStringLiteral("/../lib/paint.software/plugins"));
+    // The user's personal, writable plugins folder.
     const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (!appData.isEmpty())
         dirs << appData + QStringLiteral("/plugins");

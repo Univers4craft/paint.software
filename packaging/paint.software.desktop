@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=paint.software
+GenericName=Image Editor
+Comment=Open-source Paint.NET clone for Linux
+Comment[fr]=Clone open-source de Paint.NET pour Linux
+Exec=paintdotnet %F
+Icon=paint.software
+Terminal=false
+Categories=Graphics;2DGraphics;RasterGraphics;
+MimeType=image/png;image/jpeg;image/bmp;image/gif;image/tiff;image/webp;
+Keywords=paint;image;editor;photo;draw;paint.net;

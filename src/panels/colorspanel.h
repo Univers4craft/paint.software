@@ -18,6 +18,10 @@ public:
     QColor color() const { return m_color; }
     void setColor(const QColor &color);
 
+    // Without this the widget has no size hint, so the panel's own hint leaves
+    // the disc out of its height budget and the wheel gets squeezed small.
+    QSize sizeHint() const override { return QSize(190, 190); }
+
 signals:
     void colorChanged(const QColor &color);
 
@@ -56,6 +60,9 @@ public:
     void activateSecondaryColorSlot();
     void toggleActiveColorSlot();
     void swapPrimaryAndSecondaryColors();
+    // Redraws the reset/swap icons for the current colour scheme. They are
+    // painted pixmaps, so a stylesheet change cannot recolour them.
+    void refreshIcons();
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -77,7 +84,10 @@ private:
     void updateSliders(const QColor &color);
     void updateHsvSliders(const QColor &color);
     void updateHex(const QColor &color);
-    void createSwatches(QLayout *layout);
+    // Takes a QBoxLayout, not a QLayout: the palette must be added with
+    // addLayout(), which adopts the sub-layout. Plain addItem() does not, and the
+    // swatch buttons then never get a parent widget and are never shown.
+    void createSwatches(class QBoxLayout *layout);
 
     Document *m_document = nullptr;
     class QComboBox *m_slotCombo = nullptr;
@@ -86,6 +96,7 @@ private:
     QLabel *m_primarySwatch;
     QLabel *m_secondarySwatch;
     QPushButton *m_swapBtn;
+    class QToolButton *m_resetBtn = nullptr;
     ColorWheelWidget *m_colorWheel;
 
     QSlider *m_redSlider, *m_greenSlider, *m_blueSlider, *m_alphaSlider;

@@ -100,6 +100,7 @@ void CanvasWidget::zoomToRect(const QRect &canvasRect) {
         (width() - rs - canvasRect.width() * m_zoom) / 2.0 - canvasRect.x() * m_zoom,
         (height() - rs - canvasRect.height() * m_zoom) / 2.0 - canvasRect.y() * m_zoom
     );
+    m_autoCenter = false;   // framed on a specific rect, not on the whole image
     update();
 }
 
@@ -115,6 +116,22 @@ void CanvasWidget::zoomToActual() {
     update();
 }
 
+void CanvasWidget::centerView() {
+    if (!m_document) return;
+
+    // paint.net opens with the canvas centred, not pinned to the top-left. The
+    // image is painted at m_pan + (rs, rs), so centring it inside the area right
+    // of the rulers means panning by half the leftover space.
+    // No margin clamp here: it would push a snugly-fitting image off-centre, and
+    // an image larger than the viewport is better centred (overflowing evenly)
+    // than pinned to the left.
+    const int rs = m_showRulers ? 20 : 0;
+    const qreal imgW = m_document->width() * m_zoom;
+    const qreal imgH = m_document->height() * m_zoom;
+    m_pan = QPointF((width() - rs - imgW) / 2.0, (height() - rs - imgH) / 2.0);
+    update();
+}
+
 void CanvasWidget::resetToDefaultView() {
     if (!m_document) return;
 
@@ -125,18 +142,8 @@ void CanvasWidget::resetToDefaultView() {
     const qreal fitZoom = std::min(availableWidth / m_document->width(), availableHeight / m_document->height());
 
     setZoom(std::min(1.0, fitZoom));
-
-    // Centre the image in the viewport (paint.net opens with the canvas centred,
-    // not pinned to the top-left). Horizontal centring is the important one; we
-    // centre vertically too but keep at least the top margin.
-    const qreal imgW = m_document->width() * m_zoom;
-    const qreal imgH = m_document->height() * m_zoom;
-    const qreal viewW = width() - rs;
-    const qreal viewH = height() - rs;
-    const qreal panX = std::max(margin, (viewW - imgW) / 2.0);
-    const qreal panY = std::max(margin, (viewH - imgH) / 2.0);
-    m_pan = QPointF(panX, panY);
-    update();
+    m_autoCenter = true;   // follow the window again until the user pans
+    centerView();
 }
 
 QPointF CanvasWidget::widgetToCanvas(const QPointF &widgetPos) const {
@@ -410,6 +417,7 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *event) {
     if (m_isPanning) {
         QPoint delta = event->pos() - m_lastPanPos;
         m_pan += QPointF(delta);
+        m_autoCenter = false;   // the user placed the view; leave it alone
         m_lastPanPos = event->pos();
         update();
         return;
@@ -447,6 +455,7 @@ void CanvasWidget::wheelEvent(QWheelEvent *event) {
 
     QPointF newWidgetPos = canvasToWidget(oldCanvasPos);
     m_pan += event->position() - newWidgetPos;
+    m_autoCenter = false;   // wheel zoom anchors on the cursor; keep that anchor
     update();
 }
 
@@ -475,6 +484,11 @@ void CanvasWidget::keyReleaseEvent(QKeyEvent *event) {
 
 void CanvasWidget::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
+    // The startup view has to be centred whatever the final window size turns out
+    // to be: the window manager maximises us *after* the first layout pass, so
+    // centring only at construction leaves the image off-centre. Re-centring on
+    // every resize until the user pans keeps it right, maximised or restored.
+    if (m_autoCenter) centerView();
 }
 
 void CanvasWidget::tabletEvent(QTabletEvent *event) {

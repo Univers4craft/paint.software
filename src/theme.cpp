@@ -49,7 +49,9 @@ const char *kLight = R"(
 
     QDockWidget { font-size: 11px; color: #1f1f1f; background-color: #f0f0f0; }
     QDockWidget::title { background-color: #e4e4e4; border: 1px solid #cfcfcf; padding: 4px 6px; color: #333333; font-weight: bold; text-align: left; }
-    #ToolsPalette, LayersPanel, ColorsPanel, HistoryPanel, ToolOptionsPanel { background-color: #f0f0f0; }
+    #ToolsPalette, LayersPanel, HistoryPanel, ToolOptionsPanel { background-color: #f0f0f0; }
+    /* paint.net's Colors window is white, like the Layers/History list areas. */
+    ColorsPanel { background-color: #ffffff; }
     QDockWidget::close-button, QDockWidget::float-button {
         subcontrol-position: top right; subcontrol-origin: margin;
         background: transparent; border: 1px solid transparent;

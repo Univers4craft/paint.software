@@ -978,6 +978,48 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- CANVAS VIEW CENTRING ----------
+    printf("\n--- Canvas view centring ---\n");
+    {
+        Document doc(800, 600);
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+        canvas.show();   // hidden widgets never get a resize event (CI runs offscreen)
+        const int rs = canvas.rulerSize();
+
+        auto resizeTo = [&](int w, int h) { canvas.resize(w, h); QCoreApplication::processEvents(); };
+        auto isCentred = [&](int w, int h) {
+            const QPointF want((w - rs - doc.width() * canvas.zoom()) / 2.0,
+                               (h - rs - doc.height() * canvas.zoom()) / 2.0);
+            return std::abs(canvas.pan().x() - want.x()) < 0.51
+                && std::abs(canvas.pan().y() - want.y()) < 0.51;
+        };
+
+        resizeTo(1200, 800);
+        canvas.resetToDefaultView();
+        CHECK(isCentred(1200, 800), "resetToDefaultView centres the image");
+
+        // The window manager resizes us *after* startup (maximise), so centring
+        // once at construction leaves the image off-centre unless we follow.
+        resizeTo(1920, 1040);
+        CHECK(isCentred(1920, 1040), "image re-centres when the window is maximised");
+        resizeTo(900, 650);
+        CHECK(isCentred(900, 650), "image re-centres when the window is restored small");
+
+        // A margin clamp used to shove a snugly-fitting image 40px off-centre.
+        resizeTo(800 + rs + 30, 600 + rs + 30);
+        CHECK(std::abs(canvas.pan().x() - 15.0) < 0.51 && std::abs(canvas.pan().y() - 15.0) < 0.51,
+              "snug window still centres exactly (no margin clamp)");
+
+        // Once the user places the view themselves, a resize must not steal it.
+        resizeTo(1200, 800);
+        canvas.setPan(QPointF(5, 7));
+        resizeTo(1500, 900);
+        CHECK(canvas.pan() == QPointF(5, 7), "a user pan survives a resize (no auto-centring)");
+        canvas.resetToDefaultView();
+        CHECK(isCentred(1500, 900), "resetToDefaultView re-enables centring after a pan");
+    }
+
     // ---------- RESULT ----------
     printf("\n=====================================\n");
     printf("PASSED: %d   FAILED: %d\n", g_pass, g_fail);

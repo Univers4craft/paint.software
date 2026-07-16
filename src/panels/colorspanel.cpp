@@ -10,6 +10,7 @@
 #include <QPainterPath>
 #include <QMouseEvent>
 #include <QToolButton>
+#include "../theme.h"
 #include <QComboBox>
 #include <QEvent>
 #include <cmath>
@@ -17,7 +18,10 @@
 // ---- ColorWheelWidget ----
 
 ColorWheelWidget::ColorWheelWidget(QWidget *parent) : QWidget(parent) {
-    setMinimumSize(180, 180);
+    // Floor only — the preferred height comes from sizeHint(), which sizes the
+    // disc to match the palette row below it. Keeping the floor low lets the
+    // user shrink the panel by hand without the layout fighting back.
+    setMinimumSize(140, 140);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
@@ -152,6 +156,10 @@ void ColorWheelWidget::rebuildWheel() {
 // ---- ColorsPanel ----
 
 ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
+    // Without this a plain QWidget subclass ignores the stylesheet's
+    // background-color, so the panel stayed dark under the light scheme.
+    setAttribute(Qt::WA_StyledBackground, true);
+
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(4, 2, 4, 2);
     layout->setSpacing(2);
@@ -194,21 +202,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
     // Raise primary on top
     m_primarySwatch->raise();
 
-    m_swapBtn = new QPushButton;
-    {
-        QPixmap pm(14, 14);
-        pm.fill(Qt::transparent);
-        QPainter sp(&pm);
-        sp.setRenderHint(QPainter::Antialiasing, true);
-        sp.setPen(QPen(QColor(60, 60, 60), 1.3));
-        sp.drawLine(3, 4, 11, 4);
-        sp.drawLine(9, 2, 11, 4); sp.drawLine(9, 6, 11, 4);
-        sp.drawLine(3, 10, 11, 10);
-        sp.drawLine(3, 8, 5, 10); sp.drawLine(3, 12, 5, 10);
-        sp.end();
-        m_swapBtn->setIcon(QIcon(pm));
-        m_swapBtn->setIconSize(QSize(14, 14));
-    }
+    m_swapBtn = new QPushButton;   // icon drawn by refreshIcons(), scheme-aware
     m_swapBtn->setFixedSize(20, 20);
     m_swapBtn->setToolTip("Permuter les couleurs");
     m_swapBtn->setParent(swatchContainer);
@@ -232,29 +226,14 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
     // Small utility buttons row below wheel (like Paint.NET)
     auto *utilRow = new QHBoxLayout;
     utilRow->setSpacing(2);
-    auto *resetBtn = new QToolButton;
-    {
-        QPixmap pm(14, 14);
-        pm.fill(Qt::transparent);
-        QPainter rp(&pm);
-        rp.setRenderHint(QPainter::Antialiasing, true);
-        rp.setPen(QPen(QColor(60, 60, 60), 1.5));
-        rp.setBrush(Qt::NoBrush);
-        rp.drawArc(QRect(2, 2, 10, 10), 45*16, 270*16);
-        rp.setBrush(QColor(60, 60, 60));
-        rp.setPen(Qt::NoPen);
-        QPointF a[] = {QPointF(7, 1), QPointF(4, 3.5), QPointF(7, 6)};
-        rp.drawPolygon(a, 3);
-        rp.end();
-        resetBtn->setIcon(QIcon(pm));
-        resetBtn->setIconSize(QSize(14, 14));
-    }
-    resetBtn->setFixedSize(20, 20);
-    resetBtn->setToolTip("Réinitialiser les couleurs par défaut");
-    connect(resetBtn, &QToolButton::clicked, this, [this]() {
+    m_resetBtn = new QToolButton;   // icon drawn by refreshIcons(), scheme-aware
+    m_resetBtn->setFixedSize(20, 20);
+    m_resetBtn->setToolTip("Réinitialiser les couleurs par défaut");
+    connect(m_resetBtn, &QToolButton::clicked, this, [this]() {
         if (m_document) { m_document->setPrimaryColor(Qt::black); m_document->setSecondaryColor(Qt::white); }
     });
-    utilRow->addWidget(resetBtn);
+    refreshIcons();
+    utilRow->addWidget(m_resetBtn);
     utilRow->addWidget(m_swapBtn);
     utilRow->addStretch();
     layout->addLayout(utilRow);
@@ -563,55 +542,83 @@ void ColorsPanel::updateHsvSliders(const QColor &color) {
     m_valSpin->setValue(color.value() * 100 / 255);
 }
 
-void ColorsPanel::createSwatches(QLayout *parentLayout) {
-    // Paint.NET default palette: 96 colors (8 rows × 12 columns)
+void ColorsPanel::refreshIcons() {
+    // Both icons used to be drawn in a fixed dark grey — the same colour as the
+    // dark scheme's panel, so they were invisible. Follow the active scheme.
+    const QColor fg = Theme::isDark() ? QColor(225, 225, 225) : QColor(60, 60, 60);
+
+    if (m_resetBtn) {
+        QPixmap pm(14, 14);
+        pm.fill(Qt::transparent);
+        QPainter rp(&pm);
+        rp.setRenderHint(QPainter::Antialiasing, true);
+        rp.setPen(QPen(fg, 1.5));
+        rp.setBrush(Qt::NoBrush);
+        rp.drawArc(QRect(2, 2, 10, 10), 45 * 16, 270 * 16);
+        rp.setBrush(fg);
+        rp.setPen(Qt::NoPen);
+        QPointF a[] = {QPointF(7, 1), QPointF(4, 3.5), QPointF(7, 6)};
+        rp.drawPolygon(a, 3);
+        rp.end();
+        m_resetBtn->setIcon(QIcon(pm));
+        m_resetBtn->setIconSize(QSize(14, 14));
+    }
+
+    if (m_swapBtn) {
+        QPixmap pm(14, 14);
+        pm.fill(Qt::transparent);
+        QPainter sp(&pm);
+        sp.setRenderHint(QPainter::Antialiasing, true);
+        sp.setPen(QPen(fg, 1.3));
+        sp.drawLine(3, 4, 11, 4);
+        sp.drawLine(9, 2, 11, 4); sp.drawLine(9, 6, 11, 4);
+        sp.drawLine(3, 10, 11, 10);
+        sp.drawLine(3, 8, 5, 10); sp.drawLine(3, 12, 5, 10);
+        sp.end();
+        m_swapBtn->setIcon(QIcon(pm));
+        m_swapBtn->setIconSize(QSize(14, 14));
+    }
+}
+
+void ColorsPanel::createSwatches(QBoxLayout *parentLayout) {
+    // paint.net's default palette: 32 colours laid out as 2 rows of 16. The top
+    // row is the fully-saturated hues, the bottom row their darker halves.
     static const QColor swatchColors[] = {
-        // Row 1: Black to White grayscale
-        QColor(0,0,0), QColor(64,64,64), QColor(128,128,128), QColor(192,192,192),
-        QColor(255,255,255), QColor(128,0,0), QColor(255,0,0), QColor(255,128,0),
-        QColor(255,255,0), QColor(128,255,0), QColor(0,255,0), QColor(0,255,128),
-        // Row 2
-        QColor(0,255,255), QColor(0,128,255), QColor(0,0,255), QColor(128,0,255),
-        QColor(255,0,255), QColor(255,0,128), QColor(128,64,64), QColor(255,128,128),
-        QColor(255,192,128), QColor(255,255,128), QColor(192,255,128), QColor(128,255,128),
-        // Row 3
-        QColor(128,255,192), QColor(128,255,255), QColor(128,192,255), QColor(128,128,255),
-        QColor(192,128,255), QColor(255,128,255), QColor(255,128,192), QColor(64,0,0),
-        QColor(128,0,64), QColor(192,0,0), QColor(255,64,0), QColor(255,192,0),
-        // Row 4
-        QColor(192,192,0), QColor(0,128,0), QColor(0,192,0), QColor(0,128,64),
-        QColor(0,192,192), QColor(0,64,128), QColor(0,0,128), QColor(64,0,128),
-        QColor(128,0,128), QColor(128,0,64), QColor(64,32,32), QColor(128,64,0),
-        // Row 5
-        QColor(192,128,64), QColor(255,192,128), QColor(192,128,0), QColor(128,128,0),
-        QColor(64,128,0), QColor(0,128,64), QColor(0,128,128), QColor(0,64,128),
-        QColor(0,0,64), QColor(64,0,64), QColor(128,0,64), QColor(128,64,128),
-        // Row 6
-        QColor(255,192,255), QColor(192,128,192), QColor(128,64,128), QColor(64,0,64),
-        QColor(192,128,128), QColor(255,192,192), QColor(255,224,192), QColor(255,255,192),
-        QColor(192,255,192), QColor(192,255,255), QColor(192,192,255), QColor(255,192,255),
-        // Row 7
-        QColor(64,32,0), QColor(128,64,0), QColor(192,128,0), QColor(192,192,128),
-        QColor(128,192,128), QColor(128,192,192), QColor(128,128,192), QColor(192,128,192),
-        QColor(64,0,0), QColor(128,0,0), QColor(192,0,0), QColor(255,0,0),
-        // Row 8
-        QColor(0,64,0), QColor(0,128,0), QColor(0,192,0), QColor(0,255,0),
-        QColor(0,0,64), QColor(0,0,128), QColor(0,0,192), QColor(0,0,255),
-        QColor(128,128,0), QColor(192,192,0), QColor(255,255,0), QColor(192,128,64),
+        // Row 1 — black, mid grey, then the bright hues
+        QColor(0x00,0x00,0x00), QColor(0x40,0x40,0x40), QColor(0xFF,0x00,0x00), QColor(0xFF,0x6A,0x00),
+        QColor(0xFF,0xD8,0x00), QColor(0xB6,0xFF,0x00), QColor(0x4C,0xFF,0x00), QColor(0x00,0xFF,0x21),
+        QColor(0x00,0xFF,0x90), QColor(0x00,0xFF,0xFF), QColor(0x00,0x94,0xFF), QColor(0x00,0x26,0xFF),
+        QColor(0x48,0x00,0xFF), QColor(0xB2,0x00,0xFF), QColor(0xFF,0x00,0xDC), QColor(0xFF,0x00,0x6E),
+        // Row 2 — white, light grey, then the same hues at half value
+        QColor(0xFF,0xFF,0xFF), QColor(0x80,0x80,0x80), QColor(0x7F,0x00,0x00), QColor(0x7F,0x33,0x00),
+        QColor(0x7F,0x6A,0x00), QColor(0x5B,0x7F,0x00), QColor(0x26,0x7F,0x00), QColor(0x00,0x7F,0x0E),
+        QColor(0x00,0x7F,0x46), QColor(0x00,0x7F,0x7F), QColor(0x00,0x4A,0x7F), QColor(0x00,0x13,0x7F),
+        QColor(0x21,0x00,0x7F), QColor(0x57,0x00,0x7F), QColor(0x7F,0x00,0x6E), QColor(0x7F,0x00,0x37),
     };
+
+    // Swatch size, border included. 16 of these across sets the panel's width,
+    // so keep it small: the wheel above is sized to match this row's width.
+    const int kSwatch = 11;
 
     auto *grid = new QGridLayout;
     grid->setSpacing(1);
     grid->setContentsMargins(0, 4, 0, 0);
 
-    int cols = 12;
+    int cols = 16;   // 2 rows of 16, like paint.net
     int count = sizeof(swatchColors) / sizeof(swatchColors[0]);
     for (int i = 0; i < count; ++i) {
         auto *btn = new QToolButton;
-        btn->setFixedSize(14, 14);
+        btn->setFixedSize(kSwatch, kSwatch);
         btn->setAutoRaise(true);
         QString hex = swatchColors[i].name();
-        btn->setStyleSheet(QString("QToolButton { background-color: %1; border: 1px solid #888; min-width: 12px; min-height: 12px; max-width: 12px; max-height: 12px; }").arg(hex));
+        // The stylesheet sizes the *content* box, so the 1px border and any
+        // padding are added on top: state both, or each cell silently ends up
+        // half again as wide as asked and the whole panel bloats.
+        btn->setStyleSheet(QString("QToolButton { background-color: %1; border: 1px solid #888;"
+                                   " padding: 0px; margin: 0px;"
+                                   " min-width: %2px; min-height: %2px;"
+                                   " max-width: %2px; max-height: %2px; }")
+                               .arg(hex).arg(kSwatch - 2));
         btn->setToolTip(QString("<b>%1</b><br>%2")
             .arg(hex, TR("Clic : couleur primaire · Clic droit : couleur secondaire")));
         QColor c = swatchColors[i];
@@ -624,7 +631,10 @@ void ColorsPanel::createSwatches(QLayout *parentLayout) {
         });
         grid->addWidget(btn, i / cols, i % cols);
     }
-    parentLayout->addItem(grid);
+    // addLayout, not addItem: only addLayout adopts the sub-layout and reparents
+    // the swatch buttons into this panel. With addItem they stay parentless and
+    // the whole palette is silently invisible.
+    parentLayout->addLayout(grid);
 }
 
 void ColorsPanel::onSwatchRightClicked(const QColor &color) {

@@ -53,16 +53,29 @@ void aa(QPainter &p) {
 
 // ==================== TOOL ICONS (20x20) ====================
 
+// ---- Colourful, paint.net-style tool icons -------------------------------
+// These are drawn in real colours (like paint.net's) so they read the same on a
+// light or dark background — they deliberately bypass themed(), which exists only
+// to rescue the older dark line-art icons.
+
+// Small helper: the dashed "marching ants" outline used by the selection tools.
+void marchingAnts(QPainter &p) {
+    QPen pen(QColor(65, 75, 88), 1.2, Qt::DashLine);
+    QVector<qreal> d; d << 2.5 << 1.8;
+    pen.setDashPattern(d);
+    p.setPen(pen);
+    p.setBrush(Qt::NoBrush);
+}
+
 QPixmap drawRectSelect() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    QPen pen(QColor(40, 40, 40), 1.4, Qt::DashLine);
-    QVector<qreal> d; d << 3 << 2;
-    pen.setDashPattern(d);
-    p.setPen(pen);
-    p.setBrush(QColor(100, 160, 255, 25));
-    p.drawRect(3, 3, 13, 13);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(137, 190, 233));      // light blue plate
+    p.drawRect(4, 4, 12, 12);
+    marchingAnts(p);
+    p.drawRect(4, 4, 12, 12);
     p.end();
     return pm;
 }
@@ -71,12 +84,11 @@ QPixmap drawEllipseSelect() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    QPen pen(QColor(40, 40, 40), 1.4, Qt::DashLine);
-    QVector<qreal> d; d << 3 << 2;
-    pen.setDashPattern(d);
-    p.setPen(pen);
-    p.setBrush(QColor(100, 160, 255, 25));
-    p.drawEllipse(3, 3, 13, 13);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(137, 190, 233));
+    p.drawEllipse(3, 3, 14, 14);
+    marchingAnts(p);
+    p.drawEllipse(3, 3, 14, 14);
     p.end();
     return pm;
 }
@@ -85,323 +97,428 @@ QPixmap drawMagicWand() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Shaft
-    p.setPen(QPen(QColor(160, 130, 50), 2.5));
-    p.drawLine(2, 17, 11, 8);
-    // Tip
-    p.setPen(QPen(QColor(80, 60, 20), 2));
-    p.drawLine(11, 8, 13, 6);
-    // Sparkles
-    p.setPen(QPen(QColor(255, 215, 0), 1.5));
-    p.drawLine(15, 1, 15, 5);
-    p.drawLine(13, 3, 17, 3);
-    p.setPen(QPen(QColor(255, 240, 80), 1));
-    p.drawLine(18, 5, 18, 7);
-    p.drawLine(17, 6, 19, 6);
-    p.drawPoint(11, 2);
+    // Slate shaft running bottom-left -> top-right, with a lighter tip.
+    QPen shaft(QColor(74, 85, 101), 3.0);
+    shaft.setCapStyle(Qt::RoundCap);
+    p.setPen(shaft);
+    p.drawLine(3, 17, 11, 9);
+    QPen tip(QColor(196, 208, 222), 3.0);
+    tip.setCapStyle(Qt::RoundCap);
+    p.setPen(tip);
+    p.drawLine(11, 9, 13, 7);
+    // Golden sparkles around the tip.
+    auto sparkle = [&](qreal cx, qreal cy, qreal r, const QColor &c, qreal w) {
+        QPen sp(c, w); sp.setCapStyle(Qt::RoundCap);
+        p.setPen(sp);
+        p.drawLine(QPointF(cx, cy - r), QPointF(cx, cy + r));
+        p.drawLine(QPointF(cx - r, cy), QPointF(cx + r, cy));
+    };
+    sparkle(15.5, 4.0, 3.2, QColor(255, 196, 36), 1.6);
+    sparkle(9.5, 3.0, 1.9, QColor(255, 226, 120), 1.2);
+    sparkle(18.0, 9.5, 1.7, QColor(255, 226, 120), 1.2);
     p.end();
     return pm;
 }
 
+// Move Selected Pixels: a FILLED blue arrow + a small 4-way move cross.
 QPixmap drawMove() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    int c = 10;
-    p.setPen(QPen(QColor(40, 40, 40), 1.4));
-    p.drawLine(c, 4, c, 16);
-    p.drawLine(4, c, 16, c);
-    p.setBrush(QColor(40, 40, 40));
+    QPainterPath a;
+    a.moveTo(2, 1); a.lineTo(2, 12.5); a.lineTo(5.0, 9.8);
+    a.lineTo(7.0, 14.2); a.lineTo(8.9, 13.3); a.lineTo(7.0, 9.2);
+    a.lineTo(11.0, 8.8); a.closeSubpath();
+    p.setPen(QPen(QColor(32, 56, 92), 1.0));
+    p.setBrush(QColor(96, 146, 205));
+    p.drawPath(a);
+    // Compact move cross, bottom-right.
+    const qreal cx = 14.5, cy = 14.5, r = 5.0;
+    QPen cp(QColor(64, 84, 110), 1.3); cp.setCapStyle(Qt::RoundCap);
+    p.setPen(cp);
+    p.drawLine(QPointF(cx, cy - r), QPointF(cx, cy + r));
+    p.drawLine(QPointF(cx - r, cy), QPointF(cx + r, cy));
     p.setPen(Qt::NoPen);
-    QPointF u[] = {QPointF(c, 2), QPointF(c-3, 6), QPointF(c+3, 6)};
-    p.drawPolygon(u, 3);
-    QPointF dw[] = {QPointF(c, 18), QPointF(c-3, 14), QPointF(c+3, 14)};
-    p.drawPolygon(dw, 3);
-    QPointF le[] = {QPointF(2, c), QPointF(6, c-3), QPointF(6, c+3)};
-    p.drawPolygon(le, 3);
-    QPointF ri[] = {QPointF(18, c), QPointF(14, c-3), QPointF(14, c+3)};
-    p.drawPolygon(ri, 3);
+    p.setBrush(QColor(64, 84, 110));
+    const qreal h = 2.0;
+    QPointF up[] = {QPointF(cx, cy - r - 0.8), QPointF(cx - h, cy - r + 1.6), QPointF(cx + h, cy - r + 1.6)};
+    QPointF dn[] = {QPointF(cx, cy + r + 0.8), QPointF(cx - h, cy + r - 1.6), QPointF(cx + h, cy + r - 1.6)};
+    QPointF lf[] = {QPointF(cx - r - 0.8, cy), QPointF(cx - r + 1.6, cy - h), QPointF(cx - r + 1.6, cy + h)};
+    QPointF rt[] = {QPointF(cx + r + 0.8, cy), QPointF(cx + r - 1.6, cy - h), QPointF(cx + r - 1.6, cy + h)};
+    p.drawPolygon(up, 3); p.drawPolygon(dn, 3); p.drawPolygon(lf, 3); p.drawPolygon(rt, 3);
     p.end();
     return pm;
 }
 
+// paint.net's paintbrush: blue handle, steel ferrule, blue bristle point.
 QPixmap drawBrush() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Handle
-    p.setPen(QPen(QColor(100, 70, 30), 1));
-    p.setBrush(QColor(175, 135, 75));
+    QLinearGradient hg(18, 1, 8, 11);
+    hg.setColorAt(0.0, QColor(126, 180, 238));
+    hg.setColorAt(1.0, QColor(54, 106, 178));
+    p.setPen(QPen(QColor(28, 58, 98), 0.9));
+    p.setBrush(hg);
     QPainterPath h;
-    h.moveTo(17, 1); h.lineTo(19, 3); h.lineTo(10, 12); h.lineTo(8, 10); h.closeSubpath();
+    h.moveTo(17.4, 1.2); h.lineTo(19.0, 2.8); h.lineTo(10.2, 11.6); h.lineTo(8.4, 9.8);
+    h.closeSubpath();
     p.drawPath(h);
     // Ferrule
-    p.setBrush(QColor(175, 175, 185));
+    p.setPen(QPen(QColor(92, 98, 110), 0.9));
+    p.setBrush(QColor(198, 205, 216));
     QPainterPath f;
-    f.moveTo(10, 12); f.lineTo(8, 10); f.lineTo(6, 12); f.lineTo(8, 14); f.closeSubpath();
+    f.moveTo(10.2, 11.6); f.lineTo(8.4, 9.8); f.lineTo(6.2, 12.0); f.lineTo(8.0, 13.8);
+    f.closeSubpath();
     p.drawPath(f);
-    // Bristle tip
+    // Bristles
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(55, 115, 215));
+    p.setBrush(QColor(40, 92, 170));
     QPainterPath b;
-    b.moveTo(6, 12); b.lineTo(8, 14); b.lineTo(3, 19); b.lineTo(1, 17); b.closeSubpath();
+    b.moveTo(6.2, 12.0); b.lineTo(8.0, 13.8); b.lineTo(1.8, 18.6);
+    b.closeSubpath();
     p.drawPath(b);
     p.end();
     return pm;
 }
 
+// paint.net's pencil: warm amber body, wood collar, graphite point.
 QPixmap drawPencil() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Body (yellow)
-    p.setPen(QPen(QColor(80, 80, 80), 0.8));
-    p.setBrush(QColor(255, 215, 50));
+    QLinearGradient bg(16, 2, 7, 12);
+    bg.setColorAt(0.0, QColor(255, 208, 88));
+    bg.setColorAt(1.0, QColor(236, 158, 40));
+    p.setPen(QPen(QColor(122, 78, 20), 0.9));
+    p.setBrush(bg);
     QPainterPath body;
-    body.moveTo(16, 1); body.lineTo(18, 3); body.lineTo(7, 14); body.lineTo(5, 12); body.closeSubpath();
+    body.moveTo(16.2, 1.4); body.lineTo(18.2, 3.4); body.lineTo(7.6, 13.6); body.lineTo(5.6, 11.6);
+    body.closeSubpath();
     p.drawPath(body);
+    // Wood collar
+    p.setBrush(QColor(228, 192, 142));
+    QPainterPath collar;
+    collar.moveTo(7.6, 13.6); collar.lineTo(5.6, 11.6); collar.lineTo(4.2, 13.0); collar.lineTo(6.2, 15.0);
+    collar.closeSubpath();
+    p.drawPath(collar);
     // Graphite tip
-    p.setBrush(QColor(60, 60, 60));
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(56, 56, 62));
     QPainterPath tip;
-    tip.moveTo(7, 14); tip.lineTo(5, 12); tip.lineTo(2, 18); tip.closeSubpath();
+    tip.moveTo(6.2, 15.0); tip.lineTo(4.2, 13.0); tip.lineTo(1.8, 18.4); tip.closeSubpath();
     p.drawPath(tip);
-    // Pink eraser top
-    p.setBrush(QColor(240, 150, 170));
-    QPainterPath er;
-    er.moveTo(16, 1); er.lineTo(18, 3); er.lineTo(17, 4); er.lineTo(15, 2); er.closeSubpath();
-    p.drawPath(er);
     p.end();
     return pm;
 }
 
+// paint.net's eraser: a violet/magenta angled block with a lit top face.
 QPixmap drawEraser() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    p.setPen(QPen(QColor(80, 60, 60), 1));
-    // Main eraser body (pink)
-    p.setBrush(QColor(245, 155, 175));
-    QPainterPath body;
-    body.moveTo(15, 3); body.lineTo(18, 6); body.lineTo(8, 16); body.lineTo(5, 13); body.closeSubpath();
-    p.drawPath(body);
-    // White band
-    p.setBrush(QColor(255, 225, 235));
-    QPainterPath band;
-    band.moveTo(8, 16); band.lineTo(5, 13); band.lineTo(2, 16); band.lineTo(5, 19); band.closeSubpath();
-    p.drawPath(band);
+    p.setPen(QPen(QColor(88, 42, 100), 1.0));
+    // Top face (light magenta)
+    p.setBrush(QColor(212, 130, 220));
+    QPainterPath top;
+    top.moveTo(12.8, 2.4); top.lineTo(18.0, 7.6); top.lineTo(10.4, 13.4); top.lineTo(5.2, 8.2);
+    top.closeSubpath();
+    p.drawPath(top);
+    // Front face (deeper violet) -> gives the 3D block feel
+    p.setBrush(QColor(150, 72, 168));
+    QPainterPath front;
+    front.moveTo(5.2, 8.2); front.lineTo(10.4, 13.4); front.lineTo(10.4, 17.2); front.lineTo(5.2, 12.0);
+    front.closeSubpath();
+    p.drawPath(front);
+    // Side face (mid tone)
+    p.setBrush(QColor(180, 100, 196));
+    QPainterPath side;
+    side.moveTo(10.4, 13.4); side.lineTo(18.0, 7.6); side.lineTo(18.0, 11.0); side.lineTo(10.4, 17.2);
+    side.closeSubpath();
+    p.drawPath(side);
     p.end();
     return pm;
 }
 
+// paint.net's paint bucket: a blue bucket tipped to the left, pouring paint.
 QPixmap drawFill() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Bucket body
-    p.setPen(QPen(QColor(70, 70, 70), 1.2));
-    p.setBrush(QColor(190, 190, 195));
-    QPainterPath bucket;
-    bucket.moveTo(4, 7); bucket.lineTo(4, 15); bucket.lineTo(13, 15); bucket.lineTo(13, 7); bucket.closeSubpath();
-    p.drawPath(bucket);
-    // Handle
+
+    p.save();
+    p.translate(10.0, 9.5);
+    p.rotate(-38);                 // tip the bucket like paint.net's
+    p.translate(-10.0, -9.5);
+
+    // Handle behind the body
     p.setBrush(Qt::NoBrush);
-    p.drawArc(QRect(3, 3, 8, 6), 30*16, 120*16);
-    // Paint pouring
+    p.setPen(QPen(QColor(76, 96, 122), 1.2));
+    p.drawArc(QRectF(6.0, 1.6, 8.0, 7.0), 15 * 16, 150 * 16);
+
+    // Tapered body with a blue sheen
+    QLinearGradient bg(5.5, 0, 14.5, 0);
+    bg.setColorAt(0.0, QColor(112, 170, 234));
+    bg.setColorAt(1.0, QColor(40, 96, 172));
+    p.setPen(QPen(QColor(26, 58, 104), 1.0));
+    p.setBrush(bg);
+    QPainterPath body;
+    body.moveTo(5.2, 6.2); body.lineTo(14.8, 6.2);
+    body.lineTo(12.9, 16.0); body.lineTo(7.1, 16.0);
+    body.closeSubpath();
+    p.drawPath(body);
+
+    // Rim (lighter ellipse on top)
+    p.setBrush(QColor(158, 206, 246));
+    p.drawEllipse(QRectF(5.2, 4.1, 9.6, 4.2));
+    p.restore();
+
+    // Paint pouring out to the bottom-right
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(55, 115, 215));
-    QPainterPath paint;
-    paint.moveTo(13, 8); paint.quadTo(16, 10, 17, 16); paint.lineTo(15, 16);
-    paint.quadTo(14, 11, 13, 10); paint.closeSubpath();
-    p.drawPath(paint);
+    p.setBrush(QColor(48, 112, 198));
+    QPainterPath drip;
+    drip.moveTo(12.6, 11.4);
+    drip.quadTo(17.6, 14.0, 15.8, 18.4);
+    drip.quadTo(13.4, 19.6, 12.2, 15.6);
+    drip.closeSubpath();
+    p.drawPath(drip);
     p.end();
     return pm;
 }
 
+// paint.net's colour picker: a blue-bulbed eyedropper.
 QPixmap drawColorPicker() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Bulb top
-    p.setPen(QPen(QColor(70, 70, 70), 1));
-    p.setBrush(QColor(210, 210, 220));
-    p.drawEllipse(10, 1, 8, 8);
-    // Shaft
-    p.setBrush(QColor(190, 190, 200));
+    // Bulb
+    p.setPen(QPen(QColor(28, 60, 102), 0.9));
+    p.setBrush(QColor(92, 150, 216));
+    p.drawEllipse(QRectF(10.8, 1.0, 7.8, 7.8));
+    // Barrel
+    p.setPen(QPen(QColor(92, 98, 110), 0.9));
+    p.setBrush(QColor(202, 210, 222));
     QPainterPath shaft;
-    shaft.moveTo(12, 7); shaft.lineTo(15, 7); shaft.lineTo(7, 15); shaft.lineTo(5, 13); shaft.closeSubpath();
+    shaft.moveTo(12.4, 7.4); shaft.lineTo(14.8, 9.8); shaft.lineTo(7.4, 15.6); shaft.lineTo(5.2, 13.4);
+    shaft.closeSubpath();
     p.drawPath(shaft);
     // Tip
-    p.setBrush(QColor(50, 50, 50));
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(50, 54, 62));
     QPainterPath tip;
-    tip.moveTo(7, 15); tip.lineTo(5, 13); tip.lineTo(2, 18); tip.closeSubpath();
+    tip.moveTo(7.4, 15.6); tip.lineTo(5.2, 13.4); tip.lineTo(1.8, 18.6); tip.closeSubpath();
     p.drawPath(tip);
     p.end();
     return pm;
 }
 
+// paint.net's recolor: a blue disc swept by a red "swap colour" arrow.
 QPixmap drawRecolor() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Small brush
-    p.setPen(QPen(QColor(80, 80, 80), 1.2));
-    p.drawLine(16, 2, 8, 10);
-    // Two overlapping color circles
-    p.setPen(QPen(QColor(60, 60, 60), 0.8));
-    p.setBrush(QColor(220, 60, 60));
-    p.drawEllipse(1, 9, 8, 8);
-    p.setBrush(QColor(60, 60, 220));
-    p.drawEllipse(6, 12, 8, 8);
-    // Circular arrow hint
-    p.setPen(QPen(QColor(40, 40, 40), 1.3));
+    // Blue disc
+    p.setPen(QPen(QColor(26, 58, 100), 0.9));
+    p.setBrush(QColor(72, 128, 202));
+    p.drawEllipse(QRectF(2.6, 5.4, 11.2, 11.2));
+    // Red sweep
+    QPen ap(QColor(212, 64, 42), 2.1);
+    ap.setCapStyle(Qt::RoundCap);
+    p.setPen(ap);
     p.setBrush(Qt::NoBrush);
-    p.drawArc(QRect(3, 10, 10, 10), 60*16, 180*16);
+    p.drawArc(QRectF(4.6, 2.4, 13.0, 13.0), 15 * 16, 205 * 16);
+    // Arrow head
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(212, 64, 42));
+    QPointF ah[] = { QPointF(18.6, 7.6), QPointF(13.6, 6.9), QPointF(16.3, 11.4) };
+    p.drawPolygon(ah, 3);
     p.end();
     return pm;
 }
 
+// paint.net's clone stamp: dark knob + stem over a wide amber base.
 QPixmap drawCloneStamp() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Stamp head (circular)
-    p.setPen(QPen(QColor(70, 70, 70), 1.2));
-    p.setBrush(QColor(170, 170, 175));
-    p.drawRoundedRect(4, 13, 12, 5, 2, 2);
-    // Handle
-    p.setBrush(QColor(140, 100, 60));
-    p.drawRect(8, 4, 4, 9);
-    // Handle top
-    p.setBrush(QColor(100, 70, 40));
-    p.drawRoundedRect(6, 1, 8, 4, 1, 1);
+    // Knob
+    p.setPen(QPen(QColor(38, 42, 50), 0.9));
+    p.setBrush(QColor(82, 90, 104));
+    p.drawEllipse(QRectF(7.0, 1.0, 6.0, 5.2));
+    // Stem
+    p.setBrush(QColor(112, 120, 134));
+    p.drawRect(QRectF(8.6, 4.8, 2.8, 5.4));
+    // Amber base
+    p.setPen(QPen(QColor(140, 84, 20), 0.9));
+    QLinearGradient bg(4, 10, 16, 15);
+    bg.setColorAt(0.0, QColor(248, 182, 88));
+    bg.setColorAt(1.0, QColor(210, 130, 36));
+    p.setBrush(bg);
+    QPainterPath base;
+    base.moveTo(5.0, 10.2); base.lineTo(15.0, 10.2);
+    base.lineTo(16.6, 14.2); base.lineTo(3.4, 14.2);
+    base.closeSubpath();
+    p.drawPath(base);
+    // Foot
+    p.setBrush(QColor(184, 110, 28));
+    p.drawRect(QRectF(3.2, 14.6, 13.6, 2.6));
     p.end();
     return pm;
 }
 
+// paint.net's text tool: a single serif "T". Drawn in a mid slate tone so it reads
+// on a light AND a dark palette (paint.net can use black — its palette is light).
 QPixmap drawText() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
     QFont font;
-    font.setPixelSize(16);
+    font.setPixelSize(18);
     font.setBold(true);
-    font.setFamily("Sans");
+    font.setFamily("Serif");
     p.setFont(font);
-    p.setPen(QColor(30, 30, 30));
-    p.drawText(QRect(0, 0, TS, TS), Qt::AlignCenter, "A");
-    // Small cursor line
-    p.setPen(QPen(QColor(50, 100, 200), 1));
-    p.drawLine(15, 3, 15, 17);
+    p.setPen(QColor(146, 162, 186));
+    p.drawText(QRect(0, 0, TS, TS), Qt::AlignCenter, "T");
     p.end();
     return pm;
 }
 
+// paint.net's line/curve: an S-curve with its two control nodes.
 QPixmap drawLine() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    p.setPen(QPen(QColor(40, 40, 40), 2));
-    p.drawLine(3, 17, 17, 3);
-    // Endpoint dots
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(50, 100, 200));
-    p.drawEllipse(QPointF(3, 17), 2.5, 2.5);
-    p.drawEllipse(QPointF(17, 3), 2.5, 2.5);
+    QPen cp(QColor(158, 172, 192), 1.9);
+    cp.setCapStyle(Qt::RoundCap);
+    p.setPen(cp);
+    p.setBrush(Qt::NoBrush);
+    QPainterPath c;
+    c.moveTo(3.4, 16.4);
+    c.cubicTo(7.0, 6.0, 13.0, 18.0, 16.8, 4.0);
+    p.drawPath(c);
+    // Control nodes
+    p.setPen(QPen(QColor(28, 60, 100), 0.9));
+    p.setBrush(QColor(100, 154, 216));
+    p.drawEllipse(QPointF(3.4, 16.4), 2.3, 2.3);
+    p.drawEllipse(QPointF(16.8, 4.0), 2.3, 2.3);
     p.end();
     return pm;
 }
 
+// paint.net's shapes: a blue square, a green triangle and a purple circle overlapping.
 QPixmap drawShape() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    p.setPen(QPen(QColor(50, 100, 200), 1.5));
-    p.setBrush(QColor(50, 100, 200, 30));
-    p.drawRoundedRect(2, 4, 15, 12, 2, 2);
+    // Blue square (back)
+    p.setPen(QPen(QColor(28, 60, 104), 0.9));
+    p.setBrush(QColor(80, 138, 210));
+    p.drawRect(QRectF(1.6, 2.8, 9.4, 9.4));
+    // Green triangle (right)
+    p.setPen(QPen(QColor(34, 92, 52), 0.9));
+    p.setBrush(QColor(106, 184, 110));
+    QPointF tri[] = { QPointF(14.6, 6.2), QPointF(19.0, 16.8), QPointF(10.2, 16.8) };
+    p.drawPolygon(tri, 3);
+    // Purple circle (front)
+    p.setPen(QPen(QColor(84, 40, 110), 0.9));
+    p.setBrush(QColor(170, 98, 210));
+    p.drawEllipse(QRectF(5.8, 8.2, 8.8, 8.8));
     p.end();
     return pm;
 }
 
+// paint.net's gradient icon: a violet -> blue ramp in a rounded square.
 QPixmap drawGradient() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    QLinearGradient grad(3, 0, 17, 0);
-    grad.setColorAt(0, Qt::black);
-    grad.setColorAt(1, Qt::white);
-    p.setPen(QPen(QColor(70, 70, 70), 1));
+    QLinearGradient grad(3, 3, 17, 17);
+    grad.setColorAt(0.0, QColor(166, 100, 220));
+    grad.setColorAt(1.0, QColor(56, 104, 198));
+    p.setPen(QPen(QColor(44, 54, 74), 1.1));
     p.setBrush(grad);
-    p.drawRect(3, 4, 14, 12);
+    p.drawRoundedRect(QRectF(3, 3, 14, 14), 1.6, 1.6);
     p.end();
     return pm;
 }
 
+// paint.net's lasso: a rope loop with a tail — NOT a dashed circle (which read
+// almost identically to the ellipse-select icon right below it).
 QPixmap drawLasso() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    QPen pen(QColor(40, 40, 40), 1.4, Qt::DashLine);
-    QVector<qreal> d; d << 3 << 2;
-    pen.setDashPattern(d);
-    p.setPen(pen);
-    p.setBrush(QColor(100, 160, 255, 25));
-    // Freehand lasso shape
-    QPainterPath path;
-    path.moveTo(9, 3);
-    path.cubicTo(16, 2, 18, 8, 15, 12);
-    path.cubicTo(13, 16, 8, 17, 5, 14);
-    path.cubicTo(1, 11, 2, 5, 5, 4);
-    path.cubicTo(6, 3.5, 7, 3, 9, 3);
-    p.drawPath(path);
+    QPen rope(QColor(50, 106, 176), 1.7);
+    rope.setCapStyle(Qt::RoundCap);
+    p.setPen(rope);
+    p.setBrush(QColor(178, 215, 245));
+    p.drawEllipse(QRectF(3.2, 2.0, 12.4, 9.8));
+    // Tail curling away from the loop
+    p.setBrush(Qt::NoBrush);
+    QPainterPath tail;
+    tail.moveTo(9.0, 11.8);
+    tail.cubicTo(9.4, 15.0, 13.8, 15.4, 12.2, 18.6);
+    p.drawPath(tail);
     p.end();
     return pm;
 }
 
+// Move Selection: same silhouette as Move Selected Pixels but with a HOLLOW
+// arrow — that outline/filled pair is exactly how paint.net tells them apart.
 QPixmap drawMoveSelection() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Dashed selection rect
-    QPen dashPen(QColor(40, 40, 40), 1.4, Qt::DashLine);
-    QVector<qreal> d; d << 3 << 2;
-    dashPen.setDashPattern(d);
-    p.setPen(dashPen);
-    p.setBrush(Qt::NoBrush);
-    p.drawRect(2, 2, 12, 12);
-    // 4-directional move arrow smaller, inside
-    int c = 8;
-    p.setPen(QPen(QColor(40, 40, 100), 1.2));
-    p.drawLine(c, 5, c, 11);
-    p.drawLine(5, c, 11, c);
-    p.setBrush(QColor(40, 40, 100));
+    QPainterPath a;
+    a.moveTo(2, 1); a.lineTo(2, 12.5); a.lineTo(5.0, 9.8);
+    a.lineTo(7.0, 14.2); a.lineTo(8.9, 13.3); a.lineTo(7.0, 9.2);
+    a.lineTo(11.0, 8.8); a.closeSubpath();
+    QPen ap(QColor(104, 154, 212), 1.3);
+    ap.setJoinStyle(Qt::RoundJoin);
+    p.setPen(ap);
+    p.setBrush(Qt::NoBrush);          // hollow
+    p.drawPath(a);
+    // Same compact move cross as the Move tool.
+    const qreal cx = 14.5, cy = 14.5, r = 5.0;
+    QPen cp(QColor(64, 84, 110), 1.3); cp.setCapStyle(Qt::RoundCap);
+    p.setPen(cp);
+    p.drawLine(QPointF(cx, cy - r), QPointF(cx, cy + r));
+    p.drawLine(QPointF(cx - r, cy), QPointF(cx + r, cy));
     p.setPen(Qt::NoPen);
-    QPointF u[] = {QPointF(c,3.5), QPointF(c-2,6), QPointF(c+2,6)};
-    p.drawPolygon(u, 3);
-    QPointF dw[] = {QPointF(c,12.5), QPointF(c-2,10), QPointF(c+2,10)};
-    p.drawPolygon(dw, 3);
-    QPointF le[] = {QPointF(3.5,c), QPointF(6,c-2), QPointF(6,c+2)};
-    p.drawPolygon(le, 3);
-    QPointF ri[] = {QPointF(12.5,c), QPointF(10,c-2), QPointF(10,c+2)};
-    p.drawPolygon(ri, 3);
+    p.setBrush(QColor(64, 84, 110));
+    const qreal h = 2.0;
+    QPointF up[] = {QPointF(cx, cy - r - 0.8), QPointF(cx - h, cy - r + 1.6), QPointF(cx + h, cy - r + 1.6)};
+    QPointF dn[] = {QPointF(cx, cy + r + 0.8), QPointF(cx - h, cy + r - 1.6), QPointF(cx + h, cy + r - 1.6)};
+    QPointF lf[] = {QPointF(cx - r - 0.8, cy), QPointF(cx - r + 1.6, cy - h), QPointF(cx - r + 1.6, cy + h)};
+    QPointF rt[] = {QPointF(cx + r + 0.8, cy), QPointF(cx + r - 1.6, cy - h), QPointF(cx + r - 1.6, cy + h)};
+    p.drawPolygon(up, 3); p.drawPolygon(dn, 3); p.drawPolygon(lf, 3); p.drawPolygon(rt, 3);
     p.end();
     return pm;
 }
 
+// paint.net's zoom: a magnifier with a glassy blue lens.
 QPixmap drawZoom() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Magnifier glass
-    p.setPen(QPen(QColor(60, 60, 60), 2));
-    p.setBrush(QColor(200, 225, 255, 100));
-    p.drawEllipse(3, 3, 11, 11);
-    // Handle
-    p.setPen(QPen(QColor(60, 60, 60), 2.5));
-    p.drawLine(13, 13, 17, 17);
-    // + sign inside
-    p.setPen(QPen(QColor(40, 40, 40), 1.5));
-    p.drawLine(7, 8, 10, 8);
-    p.drawLine(8, 6, 8, 10);
+    // Handle (drawn first, behind the lens)
+    QPen hp(QColor(78, 88, 104), 2.7);
+    hp.setCapStyle(Qt::RoundCap);
+    p.setPen(hp);
+    p.drawLine(QPointF(12.4, 12.4), QPointF(17.6, 17.6));
+    // Lens
+    QRadialGradient lg(7.2, 6.6, 7.0);
+    lg.setColorAt(0.0, QColor(212, 236, 252));
+    lg.setColorAt(1.0, QColor(118, 176, 226));
+    p.setPen(QPen(QColor(36, 72, 118), 1.6));
+    p.setBrush(lg);
+    p.drawEllipse(QRectF(2.2, 2.2, 11.6, 11.6));
+    // Plus
+    QPen pp(QColor(36, 72, 118), 1.5);
+    pp.setCapStyle(Qt::RoundCap);
+    p.setPen(pp);
+    p.drawLine(QPointF(8.0, 4.9), QPointF(8.0, 11.1));
+    p.drawLine(QPointF(4.9, 8.0), QPointF(11.1, 8.0));
     p.end();
     return pm;
 }
@@ -410,10 +527,11 @@ QPixmap drawPan() {
     QPixmap pm = mkpm(TS);
     QPainter p(&pm);
     aa(p);
-    // Clean open "grab" hand. Drawn in neutral ink so themed() flips it light on
-    // the dark scheme.
-    const QColor ink(70, 70, 70);
-    const QColor skin(238, 205, 170);
+    // Clean open "grab" hand, in paint.net's warm skin tone. The outline is a warm
+    // brown (not neutral ink) so the icon reads on a light AND a dark palette
+    // without needing themed().
+    const QColor ink(150, 98, 54);
+    const QColor skin(243, 208, 168);
     p.setPen(QPen(ink, 1.1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     p.setBrush(skin);
 
@@ -601,27 +719,30 @@ QPixmap drawPaste() {
 
 namespace ToolIcons {
 
+// Every tool icon is now drawn in real paint.net-like colours, so none of them go
+// through themed() — that lightening pass exists only to rescue dark line art and
+// would wash these out.
 QIcon forTool(ToolType type) {
     switch (type) {
-    case ToolType::RectSelection:   return themed(drawRectSelect());
-    case ToolType::EllipseSelection:return themed(drawEllipseSelect());
-    case ToolType::LassoSelection:  return themed(drawLasso());
-    case ToolType::MagicWand:       return themed(drawMagicWand());
-    case ToolType::Move:            return themed(drawMove());
-    case ToolType::MoveSelection:   return themed(drawMoveSelection());
-    case ToolType::Zoom:            return themed(drawZoom());
-    case ToolType::Pan:             return themed(drawPan());
-    case ToolType::Brush:           return themed(drawBrush());
-    case ToolType::Pencil:          return themed(drawPencil());
-    case ToolType::Eraser:          return themed(drawEraser());
-    case ToolType::Fill:            return themed(drawFill());
-    case ToolType::ColorPicker:     return themed(drawColorPicker());
-    case ToolType::Recolor:         return themed(drawRecolor());
-    case ToolType::CloneStamp:      return themed(drawCloneStamp());
-    case ToolType::Text:            return themed(drawText());
-    case ToolType::Line:            return themed(drawLine());
-    case ToolType::Shape:           return themed(drawShape());
-    case ToolType::Gradient:        return themed(drawGradient());
+    case ToolType::RectSelection:   return QIcon(drawRectSelect());
+    case ToolType::EllipseSelection:return QIcon(drawEllipseSelect());
+    case ToolType::LassoSelection:  return QIcon(drawLasso());
+    case ToolType::MagicWand:       return QIcon(drawMagicWand());
+    case ToolType::Move:            return QIcon(drawMove());
+    case ToolType::MoveSelection:   return QIcon(drawMoveSelection());
+    case ToolType::Zoom:            return QIcon(drawZoom());
+    case ToolType::Pan:             return QIcon(drawPan());
+    case ToolType::Fill:            return QIcon(drawFill());
+    case ToolType::Gradient:        return QIcon(drawGradient());
+    case ToolType::Brush:           return QIcon(drawBrush());
+    case ToolType::Eraser:          return QIcon(drawEraser());
+    case ToolType::Pencil:          return QIcon(drawPencil());
+    case ToolType::ColorPicker:     return QIcon(drawColorPicker());
+    case ToolType::CloneStamp:      return QIcon(drawCloneStamp());
+    case ToolType::Recolor:         return QIcon(drawRecolor());
+    case ToolType::Text:            return QIcon(drawText());
+    case ToolType::Line:            return QIcon(drawLine());
+    case ToolType::Shape:           return QIcon(drawShape());
     default: return QIcon();
     }
 }

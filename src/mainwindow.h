@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QToolBar>
 #include <QDockWidget>
+#include <QPointer>
 #include <QStatusBar>
 #include <QLabel>
 #include <QAction>
@@ -231,7 +232,9 @@ private:
 
     bool m_normalizingDockLayout = false;
     bool m_restoringState = false;
-    bool m_freshLayout = false;   // no saved layout: use paint.net default placement
     bool m_minimized = false;
-    QVector<QDockWidget*> m_hiddenOnMinimize;   // floating docks hidden with the app
+    // Top-level windows hidden with the app. Not always the QDockWidget itself:
+    // Qt wraps grouped panels in a QDockWidgetGroupWindow, which owns the window.
+    QVector<QPointer<QWidget>> m_hiddenOnMinimize;
+    QVector<QRect> m_hiddenOnMinimizeGeometry;  // their geometry, to restore on show
 };

@@ -181,25 +181,25 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Select brush tool by default
     selectTool(ToolType::Brush);
-    QTimer::singleShot(0, this, [this]() {
-        m_canvas->resetToDefaultView();
+    // Place the four utility windows where paint.net puts them (Tools left,
+    // History/Layers/Colors stacked right). resetUtilityWindow anchors them to
+    // the app frame, so re-running it at every startup gives the same arrangement
+    // whatever the window size is — coordinates saved by a differently sized
+    // session would otherwise put them anywhere, even off-screen. Panels the user
+    // docked or closed are left as they are.
+    // Deferred so the docks are real top-level windows and the window manager has
+    // finalised the main window's geometry (otherwise frameGeometry() is still
+    // (0,0), the docks land outside the frame and move() is ignored).
+    QTimer::singleShot(250, this, [this]() {
+        for (QDockWidget *dock : {m_toolsDock, m_historyDock, m_layersDock, m_colorsDock}) {
+            // window() != this, not isFloating(): a panel Qt has wrapped in a
+            // QDockWidgetGroupWindow is its own window but reports isFloating()
+            // false, and would keep whatever size the saved state gave it.
+            if (dock && !dock->isHidden() && dock->window() != this)
+                resetUtilityWindow(dock);
+        }
+        m_canvas->resetToDefaultView();   // re-centre once sizes are final
     });
-    // First run on this layout: place the four utility windows where paint.net
-    // puts them (Tools left, History/Layers/Colors stacked right). Deferred a
-    // little so the docks are real top-level windows by then — otherwise move()
-    // is ignored and Qt centres them.
-    if (m_freshLayout) {
-        // Longer delay so the window manager has finalised the main window's
-        // position first (otherwise geometry() is still (0,0) and the docks land
-        // outside the frame).
-        QTimer::singleShot(250, this, [this]() {
-            resetUtilityWindow(m_toolsDock);
-            resetUtilityWindow(m_historyDock);
-            resetUtilityWindow(m_layersDock);
-            resetUtilityWindow(m_colorsDock);
-            m_canvas->resetToDefaultView();   // re-centre once sizes are final
-        });
-    }
     updateTitle();
 
     // Apply the current colour scheme (light / dark / follow-OS).
@@ -237,16 +237,13 @@ void MainWindow::loadUiState() {
     // v3 layout persistence (bumped when the window layout was reworked to match
     // paint.net; any older saved state is intentionally ignored).
     const QString stateB64 = settings.value("ui/mainWindowStateV6").toString();
-    if (stateB64.isEmpty()) {
-        m_freshLayout = true;   // first run on this layout: use default placement
-    } else {
+    if (!stateB64.isEmpty()) {
         const QByteArray savedState = QByteArray::fromBase64(stateB64.toLatin1());
         // Block normalizeDockLayout while restoreState repositions docks.
         QScopedValueRollback<bool> restoreGuard(m_restoringState, true);
         if (!restoreState(savedState, 6)) {
             settings.remove("ui/mainWindowStateV6");
             settings.remove("ui/mainWindowGeometry");
-            m_freshLayout = true;
         }
     }
 
@@ -695,6 +692,9 @@ void MainWindow::applyTheme() {
     for (QDockWidget *dock : {m_toolsDock, m_historyDock, m_layersDock, m_colorsDock}) {
         if (dock) dock->setStyleSheet(Theme::styleSheet());
     }
+    // The reset/swap icons are painted pixmaps, so a stylesheet can't recolour
+    // them: redraw them for the new scheme.
+    if (m_colorsPanel) m_colorsPanel->refreshIcons();
 }
 
 void MainWindow::retranslateUi() {
@@ -845,7 +845,13 @@ void MainWindow::resetUtilityWindow(QDockWidget *dock) {
     // right edge — the paint.net default arrangement.
     if (!dock || !m_canvas) return;
     dock->setVisible(true);
-    dock->setFloating(true);
+    // Only float it if it is currently docked into the main window. When Qt has
+    // wrapped it in a QDockWidgetGroupWindow it is already its own window, and
+    // calling setFloating() would tear it out — leaving the emptied group window
+    // behind as a blank top-level window. Position the wrapper instead.
+    if (dock->window() == this) dock->setFloating(true);
+    QWidget *top = dock->window();
+    if (!top || top == this) return;
 
     // Default arrangement, reproducing the user's preferred layout. Left/top
     // windows anchor to the app's top-left, right/bottom windows to the app's
@@ -859,19 +865,22 @@ void MainWindow::resetUtilityWindow(QDockWidget *dock) {
     auto place = [&](int x, int y, int w, int h) {
         x = std::max(app.left() + 6, std::min(x, app.right() - w - 6));
         y = std::max(app.top() + 6, std::min(y, app.bottom() - h - 6));
-        dock->resize(w, h);
-        dock->move(x, y);
+        top->resize(w, h);
+        top->move(x, y);
     };
 
     if (dock == m_toolsDock) {
-        place(app.left() + 65, app.top() + 164, dock->sizeHint().width(), 312);
+        place(app.left() + 65, app.top() + 164, top->sizeHint().width(), 312);
     } else if (dock == m_historyDock) {
         place(app.right() - rightW - 28, app.top() + 153, rightW, 300);
     } else if (dock == m_layersDock) {
         place(app.right() - rightW - 28, app.bottom() - 260 - 78, rightW, 260);
     } else if (dock == m_colorsDock) {
-        // Opens collapsed (wheel + swatches only); "Plus >>" grows it.
-        place(app.left() + 28, app.bottom() - 300 - 76, 230, 300);
+        // Opens collapsed (wheel + palette); "Plus >>" adds the sliders. Take the
+        // height from the panel: hard-coding it either crops the palette or, since
+        // Qt enforces the minimum anyway, anchors the window too low.
+        const int h = std::max(300, top->sizeHint().height());
+        place(app.left() + 28, app.bottom() - h - 76, 230, h);
     }
 }
 
@@ -1188,19 +1197,23 @@ void MainWindow::createToolsPanel() {
         int col;
     };
 
-    // paint.net's Tools window: 2 columns filled ROW BY ROW, in the documented
-    // group order (Selection, Move, View, Fill, Drawing, Photo, Text & Shapes).
+    // paint.net's Tools window, 2 columns x 10 rows — positions taken from the
+    // official Tools window (paint.net/doc/latest/images/tools/toolswindow.png):
+    // the four SELECTION tools run down the LEFT column (rows 0-3) while
+    // Move / Move Selection / Zoom / Pan run down the RIGHT column (rows 0-3);
+    // the remaining groups sit in pairs on rows 4-9.
+    // The list order below is paint.net's documented tool order (1..19) — it is what
+    // the single-row horizontal palette follows.
     const QVector<ToolDef> toolDefs = {
-        // Selection tools
+        // Selection tools -> left column
         {"Sélection rectangle",              "S",  ToolType::RectSelection,    0, 0},
-        {"Lasso de sélection",               "S",  ToolType::LassoSelection,   0, 1},
-        {"Sélection ellipse",                "S",  ToolType::EllipseSelection, 1, 0},
-        {"Baguette magique",                 "S",  ToolType::MagicWand,        1, 1},
-        // Move tools
-        {"Déplacer les pixels sélectionnés", "M",  ToolType::Move,             2, 0},
-        {"Déplacer la sélection",            "M",  ToolType::MoveSelection,    2, 1},
-        // View tools
-        {"Zoom / Loupe",                     "Z",  ToolType::Zoom,             3, 0},
+        {"Lasso de sélection",               "S",  ToolType::LassoSelection,   1, 0},
+        {"Sélection ellipse",                "S",  ToolType::EllipseSelection, 2, 0},
+        {"Baguette magique",                 "S",  ToolType::MagicWand,        3, 0},
+        // Move + view tools -> right column
+        {"Déplacer les pixels sélectionnés", "M",  ToolType::Move,             0, 1},
+        {"Déplacer la sélection",            "M",  ToolType::MoveSelection,    1, 1},
+        {"Zoom / Loupe",                     "Z",  ToolType::Zoom,             2, 1},
         {"Se déplacer dans l'image",         "H",  ToolType::Pan,              3, 1},
         // Fill tools
         {"Pot de peinture",                  "F",  ToolType::Fill,             4, 0},
@@ -1247,6 +1260,9 @@ void MainWindow::createToolsPanel() {
         btn->setProperty("toolName", td.name);
         btn->setProperty("toolKey", td.shortcut);
         btn->setProperty("toolTypeInt", static_cast<int>(td.type));
+        // paint.net's grid slot, used by the vertical (2-column) palette layout.
+        btn->setProperty("pdnRow", td.row);
+        btn->setProperty("pdnCol", td.col);
         m_toolButtons.append(btn);
         // NB: no btn->setShortcut() here — the single-key shortcuts are owned by
         // the global actions in createKeyboardShortcuts(); binding them twice
@@ -1305,10 +1321,18 @@ void MainWindow::layoutToolsPalette(bool horizontal) {
     }
 
     const int n = m_toolButtons.size();
+    int maxRow = 0;
     for (int i = 0; i < n; ++i) {
         int row, col;
-        if (horizontal) { row = 0; col = i; }            // single row, left-to-right
-        else            { row = i / 2; col = i % 2; }    // 2 columns, fills rows
+        if (horizontal) {
+            row = 0; col = i;                 // single row, left-to-right
+        } else {
+            // Exact paint.net slot for this tool (selection tools down the left
+            // column, move/view down the right), not a plain row-by-row fill.
+            row = m_toolButtons[i]->property("pdnRow").toInt();
+            col = m_toolButtons[i]->property("pdnCol").toInt();
+            maxRow = qMax(maxRow, row);
+        }
         m_toolsGrid->addWidget(m_toolButtons[i], row, col);
     }
 
@@ -1337,7 +1361,7 @@ void MainWindow::layoutToolsPalette(bool horizontal) {
         if (m_toolsDock) m_toolsDock->setMinimumSize(0, 0);
         m_toolsGrid->setColumnStretch(0, 1);
         m_toolsGrid->setColumnStretch(1, 1);
-        m_toolsGrid->setRowStretch((n + 1) / 2 + 1, 1);
+        m_toolsGrid->setRowStretch(maxRow + 1, 1);   // slack below the last tool row
     }
 }
 
@@ -3075,29 +3099,47 @@ void MainWindow::changeEvent(QEvent *event) {
 // few WMs (e.g. Muffin/Cinnamon) don't deliver a WindowStateChange on external
 // minimise.
 void MainWindow::syncUtilityWindowsToMainState() {
-    // isMinimized()/visibility() are unreliable on some X11 WMs (Muffin/Cinnamon
-    // don't update them). isExposed() flips to false when the window is unmapped
-    // by the WM on minimise, which is the signal that actually works here.
+    // Only Minimized is authoritative. Minimising under Muffin/Cinnamon walks the
+    // window through Hidden -> Windowed -> Minimized, so counting the transient
+    // Hidden as minimised hid the panels early, and the Windowed blip that follows
+    // read as "restored" and showed them again mid-minimise.
     bool minimized = isMinimized();
-    if (QWindow *wh = windowHandle()) {
-        const QWindow::Visibility v = wh->visibility();
-        if (v == QWindow::Minimized || v == QWindow::Hidden) minimized = true;
-    }
+    if (QWindow *wh = windowHandle())
+        if (wh->visibility() == QWindow::Minimized) minimized = true;
     if (minimized == m_minimized) return;
     m_minimized = minimized;
 
     if (minimized) {
         m_hiddenOnMinimize.clear();
+        m_hiddenOnMinimizeGeometry.clear();
         for (QDockWidget *dock : {m_toolsDock, m_historyDock, m_layersDock, m_colorsDock}) {
-            if (dock && dock->isFloating() && dock->isVisible()) {
-                m_hiddenOnMinimize.append(dock);
-                dock->hide();
-            }
+            if (!dock || !dock->isVisible()) continue;
+            // Hide the panel's top-level window, not the dock: isFloating() is
+            // false for a panel Qt has wrapped in a QDockWidgetGroupWindow, and
+            // that group window — not the dock — is what stays on screen.
+            QWidget *top = dock->window();
+            if (!top || top == this || m_hiddenOnMinimize.contains(top)) continue;
+            m_hiddenOnMinimize.append(top);
+            m_hiddenOnMinimizeGeometry.append(top->geometry());
+            top->hide();
         }
     } else {
-        for (QDockWidget *dock : m_hiddenOnMinimize)
-            if (dock) dock->show();
+        for (int i = 0; i < m_hiddenOnMinimize.size(); ++i) {
+            QWidget *top = m_hiddenOnMinimize.at(i);
+            if (!top) continue;
+            top->show();
+            // Showing a hidden floating dock can drop its floating state, which
+            // re-docks the panel into the main window. Put it back where it was.
+            // (A group window is not a QDockWidget, and keeps its own state.)
+            if (auto *dock = qobject_cast<QDockWidget *>(top)) {
+                if (!dock->isFloating()) {
+                    dock->setFloating(true);
+                    dock->setGeometry(m_hiddenOnMinimizeGeometry.at(i));
+                }
+            }
+        }
         m_hiddenOnMinimize.clear();
+        m_hiddenOnMinimizeGeometry.clear();
     }
 }
 

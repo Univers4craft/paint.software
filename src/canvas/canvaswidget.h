@@ -29,8 +29,11 @@ public:
     void zoomToRect(const QRect &canvasRect);   // fit a document rectangle to the view
     void zoomToActual();
     void resetToDefaultView();
+    // Centres the image in the viewport at the current zoom.
+    void centerView();
     QPointF pan() const { return m_pan; }
-    void setPan(const QPointF &pan) { m_pan = pan; update(); }
+    // Any explicit pan is a user gesture: stop auto-centring from then on.
+    void setPan(const QPointF &pan) { m_pan = pan; m_autoCenter = false; update(); }
 
     // Coordinate conversion
     QPointF widgetToCanvas(const QPointF &widgetPos) const;
@@ -84,6 +87,10 @@ private:
 
     double m_zoom = 1.0;
     QPointF m_pan{0, 0};
+    // While true the image re-centres on every resize, so the startup view is
+    // centred whatever the final window size is (maximised or restored). Any
+    // user pan turns it off; resetToDefaultView turns it back on.
+    bool m_autoCenter = true;
 
     bool m_isPanning = false;
     QPoint m_lastPanPos;

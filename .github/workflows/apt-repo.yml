@@ -62,18 +62,45 @@ jobs:
         run: |
           DEB=$(ls build/*.deb | head -1)
           VERSION=$(dpkg-deb -f "$DEB" Version)
-          # Build the notes with single-quoted lines (backticks/quotes stay literal).
-          printf '%s\n' \
-            'Automatic build from the latest commit on `main`.' \
-            '' \
-            '**Install (recommended, auto-updates via APT):**' \
-            '```bash' \
-            'curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg | sudo tee /usr/share/keyrings/paint.software.gpg > /dev/null' \
-            'echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" | sudo tee /etc/apt/sources.list.d/paint.software.list' \
-            'sudo apt update && sudo apt install paint.software' \
-            '```' \
-            'Or download the `.deb` below.' \
-            > /tmp/release-notes.md
+
+          # Say what actually changed instead of just "automatic build". This is a
+          # ROLLING release: it is deleted and recreated on every push, so listing
+          # only the last push would let a one-line CI commit wipe the visible
+          # history of real fixes. List everything since the last tagged release
+          # instead — that is what this build contains that v<last tag> did not.
+          SINCE=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$SINCE" ]; then RANGE="${SINCE}..HEAD"; else RANGE="HEAD~10..HEAD"; fi
+          CHANGES=$(git log --no-merges --format='## %s%n%n%b' "$RANGE" 2>/dev/null \
+                      | grep -v -e '^Co-Authored-By:' -e '^Signed-off-by:' || true)
+          # No tag yet, or nothing since it: still show something real.
+          if [ -z "$(echo "$CHANGES" | tr -d '[:space:]')" ]; then
+            CHANGES=$(git log -1 --format='## %s%n%n%b' | grep -v '^Co-Authored-By:')
+          fi
+
+          # Single-quoted lines keep backticks and quotes literal.
+          {
+            printf '%s\n' \
+              'Automatic build from the latest commit on `main`.' \
+              ''
+            if [ -n "$SINCE" ]; then
+              printf '%s\n' "## Changes since ${SINCE} / Nouveautés depuis ${SINCE}" ''
+            else
+              printf '%s\n' '## Changes / Nouveautés' ''
+            fi
+            printf '%s\n' "$CHANGES"
+            printf '%s\n' \
+              '' \
+              '---' \
+              '' \
+              '**Install (recommended, auto-updates via APT):**' \
+              '```bash' \
+              'curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg | sudo tee /usr/share/keyrings/paint.software.gpg > /dev/null' \
+              'echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" | sudo tee /etc/apt/sources.list.d/paint.software.list' \
+              'sudo apt update && sudo apt install paint.software' \
+              '```' \
+              'Or download the `.deb` below.'
+          } > /tmp/release-notes.md
+
           gh release delete continuous --yes --cleanup-tag 2>/dev/null || true
           gh release create continuous "$DEB" \
             --target "$GITHUB_SHA" \

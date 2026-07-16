@@ -83,6 +83,7 @@ QWidget *SettingsDialog::buildUserInterfacePage() {
     connect(m_languageCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int i) {
         I18n::setLanguage(static_cast<I18n::Lang>(m_languageCombo->itemData(i).toInt()));
         I18n::saveToSettings();
+        I18n::applyQtTranslations();
         emit languageChanged();
     });
     form->addRow(TR("Langue :"), m_languageCombo);

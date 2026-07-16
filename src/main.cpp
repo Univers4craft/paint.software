@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
 
     // Restore the saved language / colour scheme before any UI is built.
     I18n::loadFromSettings();
+    I18n::applyQtTranslations();
     Theme::loadFromSettings();
 
     MainWindow window;

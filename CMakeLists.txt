@@ -227,5 +227,9 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}")
 # resolves the correct package names for the build distro (e.g. the libqt6*t64
 # variants on Ubuntu 24.04), so we do not hard-code a fragile fallback list.
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# Qt renders the standard dialog buttons (OK / Cancel / Yes / No) from its own
+# catalogue, which ships separately. Recommends (installed by default) rather than
+# Depends: without it the app runs fine, those buttons just stay English.
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-translations-l10n")
 set(CPACK_PACKAGE_FILE_NAME "paint.software_${CPACK_PACKAGE_VERSION}_amd64")
 include(CPack)

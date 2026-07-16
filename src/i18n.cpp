@@ -2,6 +2,9 @@
 
 #include <QHash>
 #include <QSettings>
+#include <QTranslator>
+#include <QCoreApplication>
+#include <QLibraryInfo>
 
 namespace {
 
@@ -479,15 +482,35 @@ const QHash<QString, QString> &table() {
 
         // ---- Misc ----
         {"Sans titre", "Untitled"},
-        {"Glissez les points. Clic pour ajouter, clic droit pour supprimer.",
-         "Drag the points. Click to add, right-click to remove."},
+
+        // ---- Resize / Canvas size / Hue-Saturation dialogs ----
+        {"Redimensionner", "Resize"},
+        {"Taille en pixels", "Pixel size"},
+        {"Par taille &absolue :", "By &absolute size:"},
+        {"Par &pourcentage :", "By &percentage:"},
+        {"Taille d'impression", "Print size"},
+        {"&Conserver les proportions", "&Maintain aspect ratio"},
+        {"Rééchantillonnage :", "Resampling:"},
+        {"Meilleure qualité", "Best Quality"},
+        {"Bicubique", "Bicubic"},
+        {"Bilinéaire", "Bilinear"},
+        {"Plus proche voisin", "Nearest Neighbor"},
+        {"Suréchantillonnage", "Super Sampling"},
+        {"Nouvelle taille : %1 x %2 pixels", "New size: %1 x %2 pixels"},
+        {"Taille du canevas", "Canvas Size"},
+        {"Nouvelle taille", "New size"},
+        {"Ancrage", "Anchor"},
+        {"Le nouvel espace sera rempli avec la couleur secondaire.",
+         "The new space will be filled with the secondary color."},
+        {"Teinte / Saturation", "Hue / Saturation"},
+        {"Teinte", "Hue"},
+        // HSL lightness, not the Brightness/Contrast adjustment: same French word.
+        {"Luminosité|hsl", "Lightness"},
         {"Mode de fusion", "Blend mode"},
         {"Taille de l'image", "Image size"},
         {"Hauteur :", "Height:"},
         {"Conserver le ratio", "Maintain aspect ratio"},
         {"%1\n%2 × %3\n(clic milieu pour fermer)", "%1\n%2 × %3\n(middle-click to close)"},
-        {"Clic gauche pour dessiner avec la couleur primaire, clic droit avec la couleur secondaire.",
-         "Left click to draw with the primary color, right click with the secondary color."},
         {"Sans titre - paint.software 1.1", "Untitled - paint.software 1.1"},
         {"Astuce : F5–F8 affichent/masquent les fenêtres Outils, Historique, ",
          "Tip: F5–F8 show/hide the Tools, History, "},
@@ -575,6 +598,31 @@ namespace I18n {
 
 void setLanguage(Lang lang) { g_lang = lang; }
 Lang language() { return g_lang; }
+
+void applyQtTranslations() {
+    // Qt draws the standard buttons (OK / Cancel / Yes / No / Save) from its own
+    // catalogue, which our table never sees. English is Qt's built-in default, so
+    // only French needs a catalogue loaded — and it is removed again on the way
+    // back so a switch to English takes effect without a restart.
+    static QTranslator *qtTranslator = nullptr;
+    if (qtTranslator) {
+        QCoreApplication::removeTranslator(qtTranslator);
+        delete qtTranslator;
+        qtTranslator = nullptr;
+    }
+    if (g_lang != Lang::French) return;
+
+    auto *t = new QTranslator;
+    // qtbase_fr.qm ships in a separate package; if it is missing, Qt simply keeps
+    // its English strings rather than failing.
+    if (t->load(QStringLiteral("qtbase_fr"),
+                QLibraryInfo::path(QLibraryInfo::TranslationsPath))) {
+        QCoreApplication::installTranslator(t);
+        qtTranslator = t;
+    } else {
+        delete t;
+    }
+}
 
 void loadFromSettings() {
     QSettings s("PaintDali", "PaintDali");

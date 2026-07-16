@@ -15,6 +15,11 @@ Lang language();
 void loadFromSettings();
 void saveToSettings();
 
+// Loads Qt's own translations for the current language. Qt renders the standard
+// dialog buttons (OK / Cancel / Yes / No / Save) itself, so without this they
+// stay English inside an otherwise French UI. Call after setLanguage().
+void applyQtTranslations();
+
 // Translate a French UI string. Returns it unchanged when the language is
 // French, or when no translation exists (so untranslated strings degrade
 // gracefully rather than disappearing).

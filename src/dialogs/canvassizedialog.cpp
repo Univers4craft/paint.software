@@ -1,4 +1,5 @@
 #include "canvassizedialog.h"
+#include "../i18n.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -10,29 +11,29 @@
 CanvasSizeDialog::CanvasSizeDialog(int currentWidth, int currentHeight, QWidget *parent)
     : QDialog(parent), m_currentWidth(currentWidth), m_currentHeight(currentHeight)
 {
-    setWindowTitle("Canvas Size");
+    setWindowTitle(TR("Taille du canevas"));
     setFixedWidth(340);
     auto *layout = new QVBoxLayout(this);
     layout->setSpacing(8);
 
     // Size section
-    auto *sizeGroup = new QGroupBox("New size");
+    auto *sizeGroup = new QGroupBox(TR("Nouvelle taille"));
     auto *form = new QFormLayout(sizeGroup);
     m_widthSpin = new QSpinBox;
     m_widthSpin->setRange(1, 65535);
     m_widthSpin->setValue(currentWidth);
     m_widthSpin->setSuffix(" pixels");
-    form->addRow("Width:", m_widthSpin);
+    form->addRow(TR("Largeur :"), m_widthSpin);
 
     m_heightSpin = new QSpinBox;
     m_heightSpin->setRange(1, 65535);
     m_heightSpin->setValue(currentHeight);
     m_heightSpin->setSuffix(" pixels");
-    form->addRow("Height:", m_heightSpin);
+    form->addRow(TR("Hauteur :"), m_heightSpin);
     layout->addWidget(sizeGroup);
 
     // Anchor 3x3 grid (like Paint.NET)
-    auto *anchorGroup = new QGroupBox("Anchor");
+    auto *anchorGroup = new QGroupBox(TR("Ancrage"));
     auto *anchorLayout = new QVBoxLayout(anchorGroup);
 
     auto *anchorGrid = new QGridLayout;
@@ -63,7 +64,7 @@ CanvasSizeDialog::CanvasSizeDialog(int currentWidth, int currentHeight, QWidget 
     layout->addWidget(anchorGroup);
 
     // Info label
-    auto *infoLabel = new QLabel("The new space will be filled with the secondary color.");
+    auto *infoLabel = new QLabel(TR("Le nouvel espace sera rempli avec la couleur secondaire."));
     infoLabel->setWordWrap(true);
     infoLabel->setStyleSheet("color: #555; font-size: 11px; font-style: italic;");
     layout->addWidget(infoLabel);

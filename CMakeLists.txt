@@ -232,5 +232,10 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # catalogue, which ships separately. Recommends (installed by default) rather than
 # Depends: without it the app runs fine, those buttons just stay English.
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-translations-l10n")
+# Say "not compatible with this system" in plain words rather than leaving the
+# user with a raw dependency error. Only reachable via dpkg -i / double-click:
+# apt refuses before the package is ever unpacked (see the script's comment).
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/deb-control/preinst")
 set(CPACK_PACKAGE_FILE_NAME "paint.software_${CPACK_PACKAGE_VERSION}_amd64")
 include(CPack)

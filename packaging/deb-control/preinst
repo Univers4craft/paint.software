@@ -1,0 +1,57 @@
+#!/bin/sh
+# Explain an incompatible system in plain words, instead of leaving the user with
+# a raw dependency error.
+#
+# This only helps the `dpkg -i` / double-click route: dpkg unpacks (running this)
+# before failing on dependencies, so the message is printed first. `apt install`
+# refuses at the solver stage — nothing from the package is ever run — so there is
+# no way to be heard there; the README states the requirement up front instead.
+#
+# Fail-safe by design: it blocks ONLY when Qt is installed and provably older than
+# 6.4. If Qt is missing, or the version cannot be read, it says nothing and lets
+# dpkg's own dependency handling do its job.
+set -e
+
+case "$1" in
+    install|upgrade) ;;
+    *) exit 0 ;;
+esac
+
+QT_MIN=6.4.0
+qtver=""
+for pkg in libqt6gui6t64 libqt6gui6; do
+    v=$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || true)
+    if [ -n "$v" ]; then qtver="$v"; break; fi
+done
+
+[ -n "$qtver" ] || exit 0
+
+if dpkg --compare-versions "$qtver" ge "$QT_MIN" 2>/dev/null; then
+    exit 0
+fi
+
+cat >&2 <<EOF
+
+┌───────────────────────────────────────────────────────────────────────┐
+│  Sorry — paint.software is not compatible with this system.           │
+│  Désolé — paint.software n'est pas compatible avec ce système.        │
+└───────────────────────────────────────────────────────────────────────┘
+
+  It needs Qt ${QT_MIN} or newer. This system has Qt ${qtver}.
+  Il faut Qt ${QT_MIN} ou plus récent. Ce système a Qt ${qtver}.
+
+  Supported / Pris en charge :
+    Ubuntu 24.04+   ·   Debian 12+   ·   Linux Mint 22+   ·   LMDE 6+
+
+  Ubuntu 22.04 and Linux Mint 21 ship Qt 6.2 and cannot run this build.
+  Ubuntu 22.04 et Linux Mint 21 fournissent Qt 6.2 et ne peuvent pas
+  exécuter cette version.
+
+  Options / Que faire :
+    - Upgrade your distribution / Mettez à niveau votre distribution
+    - Or build from source against your Qt:
+      Ou compilez depuis les sources avec votre Qt :
+      https://github.com/Univers4craft/paint.software#-build-from-source
+
+EOF
+exit 1

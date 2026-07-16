@@ -52,6 +52,9 @@ jobs:
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPAINTSW_VERSION="$VER"
           cmake --build build -j
           (cd build && cpack -G DEB)
+          # Built on Ubuntu, but Debian/LMDE name the Qt6 libraries differently:
+          # offer both names so the package installs on either (issue #1).
+          for deb in build/*.deb; do packaging/deb-add-debian-alternatives.sh "$deb"; done
 
       - name: Publish this build as its own Release
         # Every build gets its own permanent release, tagged with the version it

@@ -30,7 +30,9 @@ jobs:
         run: cmake --build build -j
 
       - name: Build .deb
-        run: cd build && cpack -G DEB
+        run: |
+          cd build && cpack -G DEB
+          cd .. && for deb in build/*.deb; do packaging/deb-add-debian-alternatives.sh "$deb"; done
 
       - name: Show package info
         run: dpkg-deb -I build/*.deb

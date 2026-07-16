@@ -53,25 +53,31 @@ jobs:
           cmake --build build -j
           (cd build && cpack -G DEB)
 
-      - name: Update the rolling "continuous" Release
-        # On every push to main, refresh a single always-latest release with the
-        # freshly built .deb (formal milestone releases still come from vX.Y.Z tags).
+      - name: Publish this build as its own Release
+        # Every build gets its own permanent release, tagged with the version it
+        # produced. The previous scheme deleted and recreated a single rolling
+        # "continuous" release, so each build destroyed the one before it and no
+        # history survived.
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           DEB=$(ls build/*.deb | head -1)
           VERSION=$(dpkg-deb -f "$DEB" Version)
+          TAG="v${VERSION}"
 
-          # Say what actually changed instead of just "automatic build". This is a
-          # ROLLING release: it is deleted and recreated on every push, so listing
-          # only the last push would let a one-line CI commit wipe the visible
-          # history of real fixes. List everything since the last tagged release
-          # instead — that is what this build contains that v<last tag> did not.
-          # --match 'v*' is essential: this job publishes a "continuous" tag, and a
-          # bare `describe --tags` picks THAT as the last tag, making the range the
-          # single commit since the previous build — the exact opposite of what we
-          # want. Only real version tags count.
+          # Re-running the workflow on a commit that was already released must not
+          # fail or duplicate: the version comes from the commit count, so the tag
+          # is already there.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — leaving it alone."
+            exit 0
+          fi
+
+          # Each release documents only what IT added: the range starts at the
+          # previous build's tag. --match 'v*' skips the leftover "continuous" tag
+          # from the old scheme, which a bare `describe --tags` would pick as the
+          # most recent one.
           SINCE=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
           if [ -n "$SINCE" ]; then RANGE="${SINCE}..HEAD"; else RANGE="HEAD~10..HEAD"; fi
           CHANGES=$(git log --no-merges --format='## %s%n%n%b' "$RANGE" 2>/dev/null \
@@ -84,7 +90,7 @@ jobs:
           # Single-quoted lines keep backticks and quotes literal.
           {
             printf '%s\n' \
-              'Automatic build from the latest commit on `main`.' \
+              "Automatic build of \`main\` — version ${VERSION}." \
               ''
             if [ -n "$SINCE" ]; then
               printf '%s\n' "## Changes since ${SINCE} / Nouveautés depuis ${SINCE}" ''
@@ -105,10 +111,10 @@ jobs:
               'Or download the `.deb` below.'
           } > /tmp/release-notes.md
 
-          gh release delete continuous --yes --cleanup-tag 2>/dev/null || true
-          gh release create continuous "$DEB" \
+          # create only — nothing is ever deleted, so past builds stay downloadable.
+          gh release create "$TAG" "$DEB" \
             --target "$GITHUB_SHA" \
-            --title "Latest build — v$VERSION" \
+            --title "v$VERSION" \
             --notes-file /tmp/release-notes.md
 
       - name: Assemble APT repository

@@ -53,6 +53,9 @@ is **fully open source** (MIT) and builds from source on any distro. A native
 
 ### 📦 Install (Debian / Ubuntu / Linux Mint)
 
+> **Requires Qt 6.4 or newer** — Ubuntu 24.04+, Debian 12+, Linux Mint 22+, LMDE 6+.
+> Ubuntu 22.04 and Linux Mint 21 ship Qt 6.2 and cannot install this package.
+
 **Recommended — signed APT repository** (install once, then updates come with `apt upgrade`):
 ```bash
 curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg \
@@ -149,6 +152,9 @@ ou Krita pour les retouches rapides, il garde la disposition familière de Paint
 Un **clone de Paint.NET / éditeur façon Pinta** natif pour Ubuntu, Linux Mint, Debian, Fedora et compagnie.
 
 ### 📦 Installer (Debian / Ubuntu / Linux Mint)
+
+> **Nécessite Qt 6.4 ou plus récent** — Ubuntu 24.04+, Debian 12+, Linux Mint 22+, LMDE 6+.
+> Ubuntu 22.04 et Linux Mint 21 fournissent Qt 6.2 et ne peuvent pas installer ce paquet.
 
 **Recommandé — dépôt APT signé** (à ajouter une fois, puis mises à jour via `apt upgrade`) :
 ```bash

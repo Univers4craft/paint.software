@@ -4,7 +4,7 @@
 class ColorPickerTool : public Tool {
 public:
     ToolType type() const override { return ToolType::ColorPicker; }
-    QString name() const override { return "Color Picker"; }
+    QString name() const override { return "Sélecteur de couleur"; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

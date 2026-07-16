@@ -6,7 +6,7 @@
 class BrushTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Brush; }
-    QString name() const override { return "Paintbrush"; }
+    QString name() const override { return "Pinceau"; }
     QCursor cursor() const override { return Qt::CrossCursor; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

@@ -5,7 +5,7 @@
 class EraserTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Eraser; }
-    QString name() const override { return "Eraser"; }
+    QString name() const override { return "Gomme"; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

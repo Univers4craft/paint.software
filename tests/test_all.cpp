@@ -30,6 +30,7 @@
 #include "tools/selectiontool.h"
 #include "tools/magicwandtool.h"
 #include "tools/movetool.h"
+#include "tools/moveselectiontool.h"
 #include "tools/texttool.h"
 #include "tools/colorpickertool.h"
 #include "tools/lassotool.h"
@@ -975,6 +976,53 @@ int main(int argc, char **argv) {
             }
         } else {
             printf("  (skipped: build/plugins/sample_sepia_plugin.so not present)\n");
+        }
+    }
+
+    // ---------- MOVE SELECTION TOOL ----------
+    printf("\n--- Move Selection tool ---\n");
+    {
+        auto dragSelection = [](QRect sel, QPointF from, QPoint delta, double zoom) {
+            Document doc(200, 200);
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            canvas.setZoom(zoom);
+            doc.selection().selectRect(sel);
+            MoveSelectionTool tool;
+            const QPointF to = from + QPointF(delta.x(), delta.y());
+            QMouseEvent e1(QEvent::MouseButtonPress, from, from, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mousePressEvent(from, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+            return doc.selection().boundingRect();
+        };
+
+        // The resize handles used to span a flat 6 canvas pixels, so on a small
+        // selection the corner zones met in the middle: every drag resized the
+        // marquee and the selection could not be moved at all.
+        const QRect small(10, 10, 20, 20);
+        CHECK(dragSelection(small, QPointF(15, 15), QPoint(20, 10), 1.0) == small.translated(20, 10),
+              "small selection moves when dragged near a corner");
+        CHECK(dragSelection(small, QPointF(20, 20), QPoint(20, 10), 1.0) == small.translated(20, 10),
+              "small selection moves when dragged from its centre");
+        const QRect big(20, 20, 80, 80);
+        CHECK(dragSelection(big, QPointF(60, 60), QPoint(10, 10), 1.0) == big.translated(10, 10),
+              "large selection moves when dragged from its centre");
+        // The grab zone is screen-space, so it must hold at any zoom.
+        CHECK(dragSelection(small, QPointF(14, 14), QPoint(20, 10), 4.0) == small.translated(20, 10),
+              "selection moves when zoomed in");
+        CHECK(dragSelection(small, QPointF(20, 20), QPoint(20, 10), 0.25) == small.translated(20, 10),
+              "selection moves when zoomed out");
+        // A press outside the marquee must do nothing.
+        CHECK(dragSelection(big, QPointF(150, 150), QPoint(10, 10), 1.0) == big,
+              "pressing outside the selection leaves it alone");
+        // Grabbing a corner exactly must still resize rather than move.
+        {
+            const QRect r = dragSelection(big, QPointF(99, 99), QPoint(40, 40), 1.0);
+            CHECK(r.width() > big.width() + 20 && r.height() > big.height() + 20,
+                  "grabbing the corner handle still resizes the marquee");
         }
     }
 

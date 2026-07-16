@@ -5,7 +5,7 @@
 class MoveTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Move; }
-    QString name() const override { return "Move"; }
+    QString name() const override { return "Déplacer les pixels sélectionnés"; }
     QCursor cursor() const override { return Qt::SizeAllCursor; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

@@ -8,7 +8,7 @@
 class MoveSelectionTool : public Tool {
 public:
     ToolType type() const override { return ToolType::MoveSelection; }
-    QString name() const override { return "Déplacer sélection"; }
+    QString name() const override { return "Déplacer la sélection"; }
     QCursor cursor() const override { return Qt::SizeAllCursor; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
@@ -29,10 +29,11 @@ private:
         Left
     };
 
-    ResizeHandle handleAt(const QRect &rect, const QPointF &canvasPos) const;
+    ResizeHandle handleAt(const QRect &rect, const QPointF &canvasPos, double zoom) const;
     QRect resizedRect(const QRect &rect, ResizeHandle handle, const QPointF &canvasPos) const;
     QRect normalizedWithMinimumSize(const QRect &rect) const;
-    QVector<QRectF> handleRects(const QRect &rect) const;
+    QVector<QRectF> handleRects(const QRect &rect, double zoom) const;
+    double handleRadius(const QRect &rect, double zoom) const;
 
     bool m_moving = false;
     bool m_resizing = false;

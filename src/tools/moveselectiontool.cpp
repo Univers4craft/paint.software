@@ -4,6 +4,7 @@
 #include "../core/layer.h"
 #include <QPainter>
 #include <QMouseEvent>
+#include <algorithm>
 
 void MoveSelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (event->button() != Qt::LeftButton) return;
@@ -13,7 +14,7 @@ void MoveSelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *e
 
     m_originalSelectionRect = doc->selection().boundingRect();
     m_previewSelectionRect = m_originalSelectionRect;
-    m_activeHandle = handleAt(m_originalSelectionRect, canvasPos);
+    m_activeHandle = handleAt(m_originalSelectionRect, canvasPos, canvas.zoom());
 
     // Resizing a handle only rescales the marquee (this tool never moves pixels),
     // so it doesn't need an unlocked layer.
@@ -99,7 +100,7 @@ void MoveSelectionTool::drawOverlay(QPainter &painter, const CanvasWidget &canva
 
     painter.setPen(QPen(Qt::white, 1));
     painter.setBrush(QColor(35, 120, 255));
-    for (const QRectF &handle : handleRects(rect)) {
+    for (const QRectF &handle : handleRects(rect, canvas.zoom())) {
         QPointF handleTopLeft = canvas.canvasToWidget(handle.topLeft());
         QPointF handleBottomRight = canvas.canvasToWidget(handle.bottomRight());
         painter.drawRect(QRectF(handleTopLeft, handleBottomRight).normalized());
@@ -107,10 +108,24 @@ void MoveSelectionTool::drawOverlay(QPainter &painter, const CanvasWidget &canva
     painter.restore();
 }
 
-MoveSelectionTool::ResizeHandle MoveSelectionTool::handleAt(const QRect &rect, const QPointF &canvasPos) const {
+// Half-size of a resize handle, in canvas units. It is a screen-space size
+// divided by the zoom, so the handle keeps a constant on-screen size, and it is
+// capped at a quarter of the selection. It used to be a flat 6 canvas pixels:
+// on a small selection the corner zones met in the middle, so every drag resized
+// the marquee and the selection could never be moved at all.
+// Drawing and hit-testing both use this, so what you see is what you can grab.
+double MoveSelectionTool::handleRadius(const QRect &rect, double zoom) const {
+    const double screenRadius = 4.0;
+    return std::min({screenRadius / std::max(zoom, 0.01),
+                     rect.width() / 4.0,
+                     rect.height() / 4.0});
+}
+
+MoveSelectionTool::ResizeHandle MoveSelectionTool::handleAt(const QRect &rect, const QPointF &canvasPos,
+                                                            double zoom) const {
     if (rect.isEmpty()) return ResizeHandle::None;
 
-    const int handleRadius = 6;
+    const double handleRadius = this->handleRadius(rect, zoom);
     const QPoint points[] = {
         rect.topLeft(),
         QPoint(rect.center().x(), rect.top()),
@@ -133,8 +148,9 @@ MoveSelectionTool::ResizeHandle MoveSelectionTool::handleAt(const QRect &rect, c
     };
 
     for (int i = 0; i < 8; ++i) {
-        QRect hit(points[i].x() - handleRadius, points[i].y() - handleRadius, handleRadius * 2 + 1, handleRadius * 2 + 1);
-        if (hit.contains(canvasPos.toPoint())) {
+        const QRectF hit(points[i].x() - handleRadius, points[i].y() - handleRadius,
+                         handleRadius * 2.0, handleRadius * 2.0);
+        if (hit.contains(canvasPos)) {
             return handles[i];
         }
     }
@@ -184,9 +200,9 @@ QRect MoveSelectionTool::normalizedWithMinimumSize(const QRect &rect) const {
     return normalized;
 }
 
-QVector<QRectF> MoveSelectionTool::handleRects(const QRect &rect) const {
-    const qreal size = 4.0;
-    const qreal half = size / 2.0;
+QVector<QRectF> MoveSelectionTool::handleRects(const QRect &rect, double zoom) const {
+    const qreal half = handleRadius(rect, zoom);
+    const qreal size = half * 2.0;
     return {
         QRectF(rect.left() - half, rect.top() - half, size, size),
         QRectF(rect.center().x() - half, rect.top() - half, size, size),

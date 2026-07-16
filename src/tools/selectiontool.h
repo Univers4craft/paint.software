@@ -9,7 +9,7 @@ public:
     SelectionTool(SelectionShape shape = SelectionShape::Rectangle);
 
     ToolType type() const override { return m_shape == SelectionShape::Rectangle ? ToolType::RectSelection : ToolType::EllipseSelection; }
-    QString name() const override { return m_shape == SelectionShape::Rectangle ? "Rectangle Select" : "Ellipse Select"; }
+    QString name() const override { return m_shape == SelectionShape::Rectangle ? "Sélection rectangle" : "Sélection ellipse"; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

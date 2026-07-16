@@ -4,7 +4,7 @@
 class PencilTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Pencil; }
-    QString name() const override { return "Pencil"; }
+    QString name() const override { return "Crayon"; }
     QCursor cursor() const override { return Qt::CrossCursor; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

@@ -4,7 +4,7 @@
 class MagicWandTool : public Tool {
 public:
     ToolType type() const override { return ToolType::MagicWand; }
-    QString name() const override { return "Magic Wand"; }
+    QString name() const override { return "Baguette magique"; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

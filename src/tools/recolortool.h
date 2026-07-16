@@ -4,7 +4,7 @@
 class RecolorTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Recolor; }
-    QString name() const override { return "Recolor"; }
+    QString name() const override { return "Recoloriage"; }
     QCursor cursor() const override { return Qt::CrossCursor; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

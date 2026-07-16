@@ -5,7 +5,7 @@
 class TextTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Text; }
-    QString name() const override { return "Text"; }
+    QString name() const override { return "Texte"; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

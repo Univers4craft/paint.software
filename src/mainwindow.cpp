@@ -2276,7 +2276,7 @@ void MainWindow::selectTool(ToolType type) {
             m_canvas->setCurrentTool(m_currentTool);
             m_canvas->setCursor(m_currentTool->cursor());
             m_toolOptionsPanel->setTool(m_currentTool);
-            if (m_toolLabel) m_toolLabel->setText(m_currentTool->name());
+            if (m_toolLabel) m_toolLabel->setText(TR(m_currentTool->name()));
             // Keep the tool palette highlight in sync when selection comes from
             // a keyboard shortcut or tool-group cycling (not just a button click).
             if (auto *action = m_toolActions.value(type, nullptr))

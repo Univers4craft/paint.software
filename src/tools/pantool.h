@@ -4,7 +4,7 @@
 class PanTool : public Tool {
 public:
     ToolType type() const override { return ToolType::Pan; }
-    QString name() const override { return "Main"; }
+    QString name() const override { return "Se déplacer dans l'image"; }
     QCursor cursor() const override { return m_panning ? Qt::ClosedHandCursor : Qt::OpenHandCursor; }
 
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;

@@ -68,7 +68,11 @@ jobs:
           # only the last push would let a one-line CI commit wipe the visible
           # history of real fixes. List everything since the last tagged release
           # instead — that is what this build contains that v<last tag> did not.
-          SINCE=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          # --match 'v*' is essential: this job publishes a "continuous" tag, and a
+          # bare `describe --tags` picks THAT as the last tag, making the range the
+          # single commit since the previous build — the exact opposite of what we
+          # want. Only real version tags count.
+          SINCE=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
           if [ -n "$SINCE" ]; then RANGE="${SINCE}..HEAD"; else RANGE="HEAD~10..HEAD"; fi
           CHANGES=$(git log --no-merges --format='## %s%n%n%b' "$RANGE" 2>/dev/null \
                       | grep -v -e '^Co-Authored-By:' -e '^Signed-off-by:' || true)

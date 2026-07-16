@@ -10,7 +10,7 @@
 </div>
 
 <div align="center">
-  <img src="docs/screenshot.png" alt="paint.software running on Linux — dark theme with layers, color wheel and tool panels" width="900">
+  <img src="docs/screenshot.png" alt="paint.software running on Linux — a Paint.NET-style image editor: dark theme, tool palette, colour wheel with the Paint.NET palette, layers and history panels" width="900">
 </div>
 
 > **Keywords:** paint.net clone · paint.net for Linux · paint dot net alternative · open-source image editor · photo editor · raster graphics editor · Qt6 · C++
@@ -37,10 +37,11 @@ maintainer's final approval (see [Contributing](#-contributing--en)).
   Posterize, Color Balance, Exposure, Highlights/Shadows, Temperature/Tint, Invert…
 - **30+ effects:** blurs, sharpen, emboss, edge detect, oil paint, pixelate, distortions, drop shadow…
 - **Live-preview dialogs** for adjustments and effects (see the result as you drag the sliders)
-- **Plugin system** — load external effect plugins (native C ABI) that appear under Effets ▸ Plugins, just like Paint.NET ([how to write one](plugins/README.md))
-- **Selections** with feather / grow / shrink, confined editing, and marquee move
+- **Plugin system** — load external effect plugins (native C ABI) that appear under Effects ▸ Plugins, just like Paint.NET ([how to write one](plugins/README.md)). A sample plugin ships with the package.
+- **Selections** with feather / grow / shrink and confined editing — move the marquee alone, or grab a
+  handle to **stretch, squash or shrink the selected artwork** like Paint.NET
 - **Non-destructive history** with click-to-navigate undo/redo, plus autosave / crash recovery
-- **UI in French & English**, light & dark themes matching Paint.NET
+- **UI in English & French** (English by default, switch in Options), light & dark themes matching Paint.NET
 - **Multi-document**, rulers (px / inches / cm), and infinite canvas
 
 ### 🤔 Why paint.software? (a Paint.NET alternative for Linux)
@@ -133,10 +134,11 @@ fusionnée après **mon approbation finale** en tant que mainteneur (voir [Contr
 - **30+ effets :** flous, netteté, relief, détection de contours, peinture à l'huile, pixelisation,
   distorsions, ombre portée…
 - **Dialogues avec aperçu en direct** pour les ajustements et effets (le résultat s'affiche en glissant les curseurs)
-- **Système de plugins** — charge des effets externes (ABI C native) qui apparaissent sous Effets ▸ Plugins, comme Paint.NET ([comment en écrire un](plugins/README.md))
-- **Sélections** avec adoucissement / dilatation / contraction, édition confinée et déplacement du contour
+- **Système de plugins** — charge des effets externes (ABI C native) qui apparaissent sous Effets ▸ Plugins, comme Paint.NET ([comment en écrire un](plugins/README.md)). Un plugin d'exemple est fourni avec le paquet.
+- **Sélections** avec adoucissement / dilatation / contraction et édition confinée — déplacez le contour
+  seul, ou attrapez une poignée pour **étirer, aplatir ou rétrécir le contenu sélectionné** comme Paint.NET
 - **Historique non destructif** avec navigation au clic, plus sauvegarde auto / récupération après plantage
-- **Interface en français & anglais**, thèmes clair & sombre calqués sur Paint.NET
+- **Interface en anglais & français** (anglais par défaut, changeable dans Options), thèmes clair & sombre calqués sur Paint.NET
 - **Multi-documents**, règles (px / pouces / cm) et canevas infini
 
 ### 🤔 Pourquoi paint.software ? (une alternative à Paint.NET pour Linux)

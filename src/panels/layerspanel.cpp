@@ -397,7 +397,7 @@ void LayersPanel::mergeWithChoice(int topIndex) {
     QPushButton *knockout = box.addButton(TR("Garder les deux dessins"), QMessageBox::ActionRole);
     QPushButton *keepTop = box.addButton(TR("Garder le calque du dessus"), QMessageBox::ActionRole);
     QPushButton *keepBottom = box.addButton(TR("Garder le calque du dessous"), QMessageBox::ActionRole);
-    box.addButton(TR("Annuler"), QMessageBox::RejectRole);
+    box.addButton(TR("Annuler|bouton"), QMessageBox::RejectRole);
     // Default to the knock-out merge when the top layer's flat background would
     // otherwise hide the bottom artwork; otherwise a plain normal merge is safest
     // (a normal merge no longer silently removes a photo's uniform border).

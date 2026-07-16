@@ -1,4 +1,5 @@
 #include "curvesdialog.h"
+#include "../i18n.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -136,7 +137,7 @@ private:
 CurvesDialog::CurvesDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle("Courbes");
     auto *layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("Glissez les points. Clic pour ajouter, clic droit pour supprimer."));
+    layout->addWidget(new QLabel(TR("Glissez les points. Clic pour ajouter, clic droit pour supprimer.")));
 
     m_curve = new CurveWidget(this);
     m_curve->onChanged = [this]() { emit curveChanged(); };
@@ -147,7 +148,7 @@ CurvesDialog::CurvesDialog(QWidget *parent) : QDialog(parent) {
     layout->addLayout(curveRow);
 
     auto *btnRow = new QHBoxLayout;
-    auto *resetBtn = new QPushButton("Réinitialiser");
+    auto *resetBtn = new QPushButton(TR("Réinitialiser"));
     connect(resetBtn, &QPushButton::clicked, m_curve, [this]() { m_curve->reset(); });
     auto *okBtn = new QPushButton("OK");
     okBtn->setDefault(true);

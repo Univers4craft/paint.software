@@ -204,7 +204,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
 
     m_swapBtn = new QPushButton;   // icon drawn by refreshIcons(), scheme-aware
     m_swapBtn->setFixedSize(20, 20);
-    m_swapBtn->setToolTip("Permuter les couleurs");
+    m_swapBtn->setToolTip(TR("Permuter les couleurs"));
     m_swapBtn->setParent(swatchContainer);
     m_swapBtn->move(50, 0);
 
@@ -228,7 +228,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
     utilRow->setSpacing(2);
     m_resetBtn = new QToolButton;   // icon drawn by refreshIcons(), scheme-aware
     m_resetBtn->setFixedSize(20, 20);
-    m_resetBtn->setToolTip("Réinitialiser les couleurs par défaut");
+    m_resetBtn->setToolTip(TR("Réinitialiser les couleurs par défaut"));
     connect(m_resetBtn, &QToolButton::clicked, this, [this]() {
         if (m_document) { m_document->setPrimaryColor(Qt::black); m_document->setSecondaryColor(Qt::white); }
     });

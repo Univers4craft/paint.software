@@ -1,4 +1,5 @@
 #include "imagelistbar.h"
+#include "../i18n.h"
 #include "core/document.h"
 
 #include <QHBoxLayout>
@@ -60,10 +61,10 @@ void ImageListBar::rebuild() {
         btn->setIcon(QIcon(pm));
         btn->setIconSize(QSize(kImage, kImage));
 
-        QString name = doc->filePath().isEmpty() ? "Sans titre"
+        QString name = doc->filePath().isEmpty() ? TR("Sans titre")
                                                  : QFileInfo(doc->filePath()).fileName();
         if (doc->isModified()) name += " *";
-        btn->setToolTip(QString("%1\n%2 × %3\n(clic milieu pour fermer)")
+        btn->setToolTip(QString(TR("%1\n%2 × %3\n(clic milieu pour fermer)"))
                             .arg(name).arg(doc->width()).arg(doc->height()));
 
         connect(btn, &QToolButton::clicked, this, [this, i]() { emit imageSelected(i); });

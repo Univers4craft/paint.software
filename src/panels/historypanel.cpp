@@ -1,4 +1,5 @@
 #include "historypanel.h"
+#include "../i18n.h"
 #include "core/document.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -31,12 +32,12 @@ HistoryPanel::HistoryPanel(QWidget *parent) : QWidget(parent) {
     undoBtn->setText(QString::fromUtf8("↶"));
     undoBtn->setFixedSize(30, 26);
     undoBtn->setStyleSheet(btnStyle);
-    undoBtn->setToolTip("Annuler (Ctrl+Z)");
+    undoBtn->setToolTip(TR("Annuler (Ctrl+Z)"));
     auto *redoBtn = new QToolButton;
     redoBtn->setText(QString::fromUtf8("↷"));
     redoBtn->setFixedSize(30, 26);
     redoBtn->setStyleSheet(btnStyle);
-    redoBtn->setToolTip("Rétablir (Ctrl+Y)");
+    redoBtn->setToolTip(TR("Rétablir (Ctrl+Y)"));
     bottomBar->addWidget(undoBtn);
     bottomBar->addWidget(redoBtn);
     layout->addLayout(bottomBar);

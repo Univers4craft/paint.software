@@ -1455,7 +1455,7 @@ void MainWindow::createStatusBar() {
     statusBar()->addWidget(m_toolLabel);
 
     // Help text on the left (like Paint.NET)
-    m_helpTextLabel = new QLabel("Clic gauche pour dessiner avec la couleur primaire, clic droit avec la couleur secondaire.");
+    m_helpTextLabel = new QLabel(TR("Clic gauche pour dessiner avec la couleur primaire, clic droit avec la couleur secondaire."));
     m_helpTextLabel->setStyleSheet("font-size: 11px; padding-left: 4px;");
 
     // Size icon (drawn grid icon) + dimensions
@@ -1659,8 +1659,8 @@ bool MainWindow::maybeSaveDocument(Document *doc) {
     int idx = m_documents.indexOf(doc);
     if (idx >= 0 && idx != m_activeDocIndex) setActiveDocument(idx);
 
-    auto result = QMessageBox::question(this, "Enregistrer les modifications",
-        "Le document a été modifié.\nVoulez-vous enregistrer les modifications ?",
+    auto result = QMessageBox::question(this, TR("Enregistrer les modifications"),
+        TR("Le document a été modifié.\nVoulez-vous enregistrer les modifications ?"),
         QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
     if (result == QMessageBox::Save) return saveDocument();
     if (result == QMessageBox::Cancel) return false;
@@ -1773,7 +1773,7 @@ void MainWindow::loadDocumentInto(const QString &filePath) {
         addRecentFile(filePath);
     } else {
         delete newDoc;
-        QMessageBox::warning(this, "Erreur", "Impossible d'ouvrir le fichier image.");
+        QMessageBox::warning(this, TR("Erreur"), TR("Impossible d'ouvrir le fichier image."));
     }
 }
 
@@ -1833,7 +1833,7 @@ bool MainWindow::saveDocument() {
     if (m_document->filePath().isEmpty())
         return saveDocumentAs();
     if (!m_document->save(m_document->filePath())) {
-        QMessageBox::warning(this, "Erreur", "Impossible d'enregistrer le fichier.");
+        QMessageBox::warning(this, TR("Erreur"), TR("Impossible d'enregistrer le fichier."));
         return false;
     }
     addRecentFile(m_document->filePath());
@@ -1870,7 +1870,7 @@ bool MainWindow::saveDocumentAs() {
     }
 
     if (!m_document->save(filePath)) {
-        QMessageBox::warning(this, "Erreur", "Impossible d'enregistrer le fichier.");
+        QMessageBox::warning(this, TR("Erreur"), TR("Impossible d'enregistrer le fichier."));
         return false;
     }
     addRecentFile(filePath);
@@ -1977,7 +1977,7 @@ void MainWindow::applyImageOperationToTargetLayers(const std::function<QImage(co
     m_lastEffectLabel = description;
     if (m_repeatEffectAction) {
         m_repeatEffectAction->setEnabled(true);
-        m_repeatEffectAction->setText("Répéter : " + description);
+        m_repeatEffectAction->setText(TR("Répéter : ") + description);
     }
 
     // When a selection is active, confine the effect to it (paint.net behaviour).
@@ -2381,7 +2381,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 2: {
         auto *e = new NoiseEffect;
         bool ok;
-        int i = QInputDialog::getInt(this, "Ajouter du bruit", "Intensité :", e->intensity(), 1, 100, 1, &ok);
+        int i = QInputDialog::getInt(this, TR("Ajouter du bruit"), TR("Intensité :"), e->intensity(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setIntensity(i);
         effect.reset(e);
@@ -2398,7 +2398,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 5: {
         auto *e = new OilPaintEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Peinture à l'huile", "Taille du pinceau :", e->radius(), 1, 10, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Peinture à l'huile"), TR("Taille du pinceau :"), e->radius(), 1, 10, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
         effect.reset(e);
@@ -2417,7 +2417,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 7: {
         auto *e = new MotionBlurEffect;
         bool ok;
-        int d = QInputDialog::getInt(this, "Flou directionnel", "Distance :", e->distance(), 1, 100, 1, &ok);
+        int d = QInputDialog::getInt(this, TR("Flou directionnel"), TR("Distance :"), e->distance(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setDistance(d);
         effect.reset(e);
@@ -2426,7 +2426,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 8: {
         // Ink Sketch - edge detection + invert for sketch look
         bool ok;
-        int strength = QInputDialog::getInt(this, "Croquis à l'encre", "Contour encre :", 50, 1, 100, 1, &ok);
+        int strength = QInputDialog::getInt(this, TR("Croquis à l'encre"), TR("Contour encre :"), 50, 1, 100, 1, &ok);
         if (!ok) return;
         applyImageOperationToTargetLayers([strength](const QImage &image) {
             QImage img = image.convertToFormat(QImage::Format_ARGB32);
@@ -2451,7 +2451,7 @@ void MainWindow::applyEffect(int effectIndex) {
     }
     case 9: {
         bool ok;
-        int pencilSize = QInputDialog::getInt(this, "Croquis au crayon", "Taille de mine :", 2, 1, 20, 1, &ok);
+        int pencilSize = QInputDialog::getInt(this, TR("Croquis au crayon"), TR("Taille de mine :"), 2, 1, 20, 1, &ok);
         if (!ok) return;
         applyImageOperationToTargetLayers([pencilSize](const QImage &image) {
             QImage img = image.convertToFormat(QImage::Format_ARGB32);
@@ -2504,7 +2504,7 @@ void MainWindow::applyEffect(int effectIndex) {
         // Clouds - Perlin-like noise render
         QImage img(m_document->width(), m_document->height(), QImage::Format_ARGB32);
         bool ok;
-        int scale = QInputDialog::getInt(this, "Nuages", "Échelle :", 100, 10, 500, 10, &ok);
+        int scale = QInputDialog::getInt(this, TR("Nuages"), TR("Échelle :"), 100, 10, 500, 10, &ok);
         if (!ok) return;
         srand(42);
         for (int y = 0; y < img.height(); ++y) {
@@ -2578,7 +2578,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 13: {
         auto *e = new RadialBlurEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Flou radial", "Angle :", e->angle(), 1, 90, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Flou radial"), TR("Angle :"), e->angle(), 1, 90, 1, &ok);
         if (!ok) return;
         e->setAngle(a);
         e->setCenter(QPoint(layer->image().width() / 2, layer->image().height() / 2));
@@ -2588,7 +2588,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 14: {
         auto *e = new ZoomBlurEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Flou de zoom", "Quantité :", e->amount(), 1, 100, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Flou de zoom"), TR("Quantité :"), e->amount(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setAmount(a);
         effect.reset(e);
@@ -2597,10 +2597,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 15: {
         auto *e = new SurfaceBlurEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Flou de surface", "Rayon :", e->radius(), 1, 20, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Flou de surface"), TR("Rayon :"), e->radius(), 1, 20, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
-        int t = QInputDialog::getInt(this, "Flou de surface", "Seuil :", e->threshold(), 1, 100, 1, &ok);
+        int t = QInputDialog::getInt(this, TR("Flou de surface"), TR("Seuil :"), e->threshold(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setThreshold(t);
         effect.reset(e);
@@ -2609,7 +2609,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 16: {
         auto *e = new UnfocusEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Flou", "Rayon :", e->radius(), 1, 50, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Flou"), TR("Rayon :"), e->radius(), 1, 50, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
         effect.reset(e);
@@ -2618,10 +2618,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 17: {
         auto *e = new FragmentEffect;
         bool ok;
-        int f = QInputDialog::getInt(this, "Fragment", "Fragments :", e->fragments(), 2, 16, 1, &ok);
+        int f = QInputDialog::getInt(this, TR("Fragment"), TR("Fragments :"), e->fragments(), 2, 16, 1, &ok);
         if (!ok) return;
         e->setFragments(f);
-        int d = QInputDialog::getInt(this, "Fragment", "Distance :", e->distance(), 1, 50, 1, &ok);
+        int d = QInputDialog::getInt(this, TR("Fragment"), TR("Distance :"), e->distance(), 1, 50, 1, &ok);
         if (!ok) return;
         e->setDistance(d);
         effect.reset(e);
@@ -2630,7 +2630,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 18: {
         auto *e = new BulgeEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Bombement", "Quantité (-100 à 100) :", e->amount(), -100, 100, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Bombement"), TR("Quantité (-100 à 100) :"), e->amount(), -100, 100, 1, &ok);
         if (!ok) return;
         e->setAmount(a);
         effect.reset(e);
@@ -2639,7 +2639,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 19: {
         auto *e = new FrostedGlassEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Verre givré", "Quantité :", e->amount(), 1, 20, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Verre givré"), TR("Quantité :"), e->amount(), 1, 20, 1, &ok);
         if (!ok) return;
         e->setAmount(a);
         effect.reset(e);
@@ -2648,7 +2648,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 20: {
         auto *e = new CrystalizeEffect;
         bool ok;
-        int s = QInputDialog::getInt(this, "Cristalliser", "Taille de cellule :", e->cellSize(), 2, 100, 1, &ok);
+        int s = QInputDialog::getInt(this, TR("Cristalliser"), TR("Taille de cellule :"), e->cellSize(), 2, 100, 1, &ok);
         if (!ok) return;
         e->setCellSize(s);
         effect.reset(e);
@@ -2657,10 +2657,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 21: {
         auto *e = new TileEffect;
         bool ok;
-        int s = QInputDialog::getInt(this, "Réflexion en mosaïque", "Taille de tuile :", e->tileSize(), 2, 200, 1, &ok);
+        int s = QInputDialog::getInt(this, TR("Réflexion en mosaïque"), TR("Taille de tuile :"), e->tileSize(), 2, 200, 1, &ok);
         if (!ok) return;
         e->setTileSize(s);
-        int r = QInputDialog::getInt(this, "Réflexion en mosaïque", "Rotation :", e->rotation(), -180, 180, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Réflexion en mosaïque"), TR("Rotation :"), e->rotation(), -180, 180, 1, &ok);
         if (!ok) return;
         e->setRotation(r);
         effect.reset(e);
@@ -2669,10 +2669,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 22: {
         auto *e = new DentsEffect;
         bool ok;
-        int s = QInputDialog::getInt(this, "Bosselure", "Échelle :", e->scale(), 1, 200, 1, &ok);
+        int s = QInputDialog::getInt(this, TR("Bosselure"), TR("Échelle :"), e->scale(), 1, 200, 1, &ok);
         if (!ok) return;
         e->setScale(s);
-        int r = QInputDialog::getInt(this, "Bosselure", "Réfraction :", e->refraction(), 1, 200, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Bosselure"), TR("Réfraction :"), e->refraction(), 1, 200, 1, &ok);
         if (!ok) return;
         e->setRefraction(r);
         effect.reset(e);
@@ -2681,7 +2681,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 23: {
         auto *e = new PolarInversionEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Inversion polaire", "Quantité :", e->amount(), 0, 100, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Inversion polaire"), TR("Quantité :"), e->amount(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setAmount(a);
         effect.reset(e);
@@ -2690,7 +2690,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 24: {
         auto *e = new TwistEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Torsion", "Quantité (-360 à 360) :", e->amount(), -360, 360, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Torsion"), TR("Quantité (-360 à 360) :"), e->amount(), -360, 360, 1, &ok);
         if (!ok) return;
         e->setAmount(a);
         effect.reset(e);
@@ -2699,7 +2699,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 25: {
         auto *e = new MedianEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Médiane", "Rayon :", e->radius(), 1, 10, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Médiane"), TR("Rayon :"), e->radius(), 1, 10, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
         effect.reset(e);
@@ -2708,10 +2708,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 26: {
         auto *e = new ReduceNoiseEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Réduire le bruit", "Rayon :", e->radius(), 1, 10, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Réduire le bruit"), TR("Rayon :"), e->radius(), 1, 10, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
-        int s = QInputDialog::getInt(this, "Réduire le bruit", "Force :", e->strength(), 1, 100, 1, &ok);
+        int s = QInputDialog::getInt(this, TR("Réduire le bruit"), TR("Force :"), e->strength(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setStrength(s);
         effect.reset(e);
@@ -2720,7 +2720,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 27: {
         auto *e = new QuantizeEffect;
         bool ok;
-        int c = QInputDialog::getInt(this, "Quantifier", "Couleurs :", e->colors(), 2, 256, 1, &ok);
+        int c = QInputDialog::getInt(this, TR("Quantifier"), TR("Couleurs :"), e->colors(), 2, 256, 1, &ok);
         if (!ok) return;
         e->setColors(c);
         effect.reset(e);
@@ -2729,10 +2729,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 28: {
         auto *e = new GlowEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Lueur", "Rayon :", e->radius(), 1, 20, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Lueur"), TR("Rayon :"), e->radius(), 1, 20, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
-        int b = QInputDialog::getInt(this, "Lueur", "Luminosité :", e->brightness(), 0, 100, 1, &ok);
+        int b = QInputDialog::getInt(this, TR("Lueur"), TR("Luminosité :"), e->brightness(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setBrightness(b);
         effect.reset(e);
@@ -2741,10 +2741,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 29: {
         auto *e = new RedEyeRemoveEffect;
         bool ok;
-        int t = QInputDialog::getInt(this, "Suppression yeux rouges", "Tolérance :", e->tolerance(), 0, 100, 1, &ok);
+        int t = QInputDialog::getInt(this, TR("Suppression yeux rouges"), TR("Tolérance :"), e->tolerance(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setTolerance(t);
-        int s = QInputDialog::getInt(this, "Suppression yeux rouges", "Saturation :", e->saturation(), 0, 100, 1, &ok);
+        int s = QInputDialog::getInt(this, TR("Suppression yeux rouges"), TR("Saturation :"), e->saturation(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setSaturation(s);
         effect.reset(e);
@@ -2753,10 +2753,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 30: {
         auto *e = new SoftenPortraitEffect;
         bool ok;
-        int s = QInputDialog::getInt(this, "Adoucir le portrait", "Douceur :", e->softness(), 1, 20, 1, &ok);
+        int s = QInputDialog::getInt(this, TR("Adoucir le portrait"), TR("Douceur :"), e->softness(), 1, 20, 1, &ok);
         if (!ok) return;
         e->setSoftness(s);
-        int w = QInputDialog::getInt(this, "Adoucir le portrait", "Chaleur :", e->warmth(), 0, 100, 1, &ok);
+        int w = QInputDialog::getInt(this, TR("Adoucir le portrait"), TR("Chaleur :"), e->warmth(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setWarmth(w);
         effect.reset(e);
@@ -2765,10 +2765,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 31: {
         auto *e = new VignetteEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Vignette", "Quantité :", e->amount(), 0, 100, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Vignette"), TR("Quantité :"), e->amount(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setAmount(a);
-        int r = QInputDialog::getInt(this, "Vignette", "Rayon :", e->radius(), 0, 100, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Vignette"), TR("Rayon :"), e->radius(), 0, 100, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
         effect.reset(e);
@@ -2777,10 +2777,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 32: {
         auto *e = new TurbulenceEffect;
         bool ok;
-        int s = QInputDialog::getInt(this, "Turbulence", "Échelle :", e->scale(), 10, 500, 10, &ok);
+        int s = QInputDialog::getInt(this, TR("Turbulence"), TR("Échelle :"), e->scale(), 10, 500, 10, &ok);
         if (!ok) return;
         e->setScale(s);
-        int r = QInputDialog::getInt(this, "Turbulence", "Rugosité :", e->roughness(), 1, 100, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Turbulence"), TR("Rugosité :"), e->roughness(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setRoughness(r);
         effect.reset(e);
@@ -2789,7 +2789,7 @@ void MainWindow::applyEffect(int effectIndex) {
     case 33: {
         auto *e = new ReliefEffect;
         bool ok;
-        int a = QInputDialog::getInt(this, "Relief", "Angle :", e->angle(), 0, 360, 1, &ok);
+        int a = QInputDialog::getInt(this, TR("Relief"), TR("Angle :"), e->angle(), 0, 360, 1, &ok);
         if (!ok) return;
         e->setAngle(a);
         effect.reset(e);
@@ -2798,10 +2798,10 @@ void MainWindow::applyEffect(int effectIndex) {
     case 34: {
         auto *e = new OutlineEffect;
         bool ok;
-        int t = QInputDialog::getInt(this, "Contour", "Épaisseur :", e->thickness(), 1, 10, 1, &ok);
+        int t = QInputDialog::getInt(this, TR("Contour"), TR("Épaisseur :"), e->thickness(), 1, 10, 1, &ok);
         if (!ok) return;
         e->setThickness(t);
-        int i = QInputDialog::getInt(this, "Contour", "Intensité :", e->intensity(), 1, 100, 1, &ok);
+        int i = QInputDialog::getInt(this, TR("Contour"), TR("Intensité :"), e->intensity(), 1, 100, 1, &ok);
         if (!ok) return;
         e->setIntensity(i);
         effect.reset(e);
@@ -2810,11 +2810,11 @@ void MainWindow::applyEffect(int effectIndex) {
     case 35: {
         auto *e = new MorphologyEffect;
         bool ok;
-        int r = QInputDialog::getInt(this, "Morphologie", "Rayon :", e->radius(), 1, 10, 1, &ok);
+        int r = QInputDialog::getInt(this, TR("Morphologie"), TR("Rayon :"), e->radius(), 1, 10, 1, &ok);
         if (!ok) return;
         e->setRadius(r);
         QStringList modes = {"Dilater", "Éroder"};
-        QString mode = QInputDialog::getItem(this, "Morphologie", "Mode :", modes, 0, false, &ok);
+        QString mode = QInputDialog::getItem(this, TR("Morphologie"), TR("Mode :"), modes, 0, false, &ok);
         if (!ok) return;
         e->setDilate(mode == "Dilater");
         effect.reset(e);
@@ -3046,11 +3046,11 @@ void MainWindow::updateTitle() {
             QFileInfo fi(m_document->filePath());
             filename = fi.fileName();
         } else {
-            filename = "Sans titre";
+            filename = TR("Sans titre");
         }
         if (m_document->isModified()) filename += " *";
     } else {
-        filename = "Sans titre";
+        filename = TR("Sans titre");
     }
     setWindowTitle(filename + " - paint.software 1.1");
 }
@@ -3167,7 +3167,7 @@ void MainWindow::dragMoveEvent(QDragMoveEvent *event)
 void MainWindow::dropEvent(QDropEvent *event)
 {
     if (!m_document) {
-        QMessageBox::warning(this, "Erreur", "Veuillez créer un document avant d'ajouter un calque.");
+        QMessageBox::warning(this, TR("Erreur"), TR("Veuillez créer un document avant d'ajouter un calque."));
         return;
     }
 
@@ -3211,7 +3211,7 @@ void MainWindow::dropEvent(QDropEvent *event)
                     updateTitle();
                     event->acceptProposedAction();
                 } else {
-                    QMessageBox::warning(this, "Erreur", "Impossible de charger le fichier image.");
+                    QMessageBox::warning(this, TR("Erreur"), TR("Impossible de charger le fichier image."));
                 }
             }
         }

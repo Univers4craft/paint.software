@@ -1,4 +1,5 @@
 #include "plugineffect.h"
+#include "../i18n.h"
 
 #include <QImage>
 #include <QLibrary>
@@ -16,7 +17,7 @@ PluginEffect::PluginEffect(const PswEffect &desc, std::shared_ptr<QLibrary> libr
     for (int i = 0; i < n && desc.params; ++i) {
         const PswParam &p = desc.params[i];
         PluginParamInfo info;
-        info.label = p.label ? QString::fromUtf8(p.label) : QStringLiteral("Paramètre %1").arg(i + 1);
+        info.label = p.label ? QString::fromUtf8(p.label) : TR("Paramètre %1").arg(i + 1);
         info.minValue = p.minValue;
         info.maxValue = qMax(p.minValue, p.maxValue);
         info.defValue = qBound(info.minValue, p.defValue, info.maxValue);

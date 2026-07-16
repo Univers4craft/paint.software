@@ -5,7 +5,8 @@
 
 namespace {
 
-I18n::Lang g_lang = I18n::Lang::French;
+// Matches the default in loadFromSettings(), for any code path that runs before it.
+I18n::Lang g_lang = I18n::Lang::English;
 
 // French (source) -> English. Ampersands mark menu accelerators and are kept
 // in both languages.
@@ -424,13 +425,146 @@ const QHash<QString, QString> &table() {
         {"Superposer (normal)", "Combine (normal)"},
         {"Garder le calque du dessus", "Keep the top layer"},
         {"Garder le calque du dessous", "Keep the bottom layer"},
-        {"Annuler", "Cancel"},
+        {"Annuler|bouton", "Cancel"},
         {"Le calque du dessous est une couleur unie (arrière-plan).",
          "The bottom layer is a solid colour (background)."},
         {"Le calque du dessus est une couleur unie (arrière-plan).",
          "The top layer is a solid colour (background)."},
         {"Les deux calques contiennent un dessin.",
          "Both layers contain artwork."},
+
+        // ---- Adjustments ----
+        {"Luminosité", "Brightness"},
+        {"Luminosité / Contraste", "Brightness / Contrast"},
+        {"Contraste", "Contrast"},
+        {"Balance des couleurs", "Color Balance"},
+        {"Cyan / Rouge", "Cyan / Red"},
+        {"Magenta / Vert", "Magenta / Green"},
+        {"Jaune / Bleu", "Yellow / Blue"},
+        {"Niveaux", "Levels"},
+        {"Noir d'entrée", "Input black"},
+        {"Blanc d'entrée", "Input white"},
+        {"Gamma", "Gamma"},
+        {"Hautes lumières", "Highlights"},
+        {"Basses lumières", "Shadows"},
+        {"Noir et blanc", "Black and White"},
+        {"Teinte (vert → magenta)", "Tint (green → magenta)"},
+        {"Température (froid → chaud)", "Temperature (cool → warm)"},
+
+        // ---- Effects ----
+        {"Flou gaussien", "Gaussian Blur"},
+        {"Netteté", "Sharpen"},
+        {"Pixéliser", "Pixelate"},
+        {"Rayon", "Radius"},
+        {"Quantité", "Amount"},
+        {"Intensité", "Intensity"},
+        {"Taille de cellule", "Cell size"},
+
+        // ---- Image / selection commands ----
+        {"Retourner horizontalement", "Flip Horizontal"},
+        {"Retourner verticalement", "Flip Vertical"},
+        {"Inverser la sélection", "Invert Selection"},
+        {"Aplatir les calques ?", "Flatten layers?"},
+        {"Garder les deux dessins", "Keep both drawings"},
+
+        // ---- View ----
+        {"Zoom avant", "Zoom In"},
+        {"Zoom arrière", "Zoom Out"},
+        {"Barre d'outils", "Toolbar"},
+
+        // ---- Plugins ----
+        {"Plugins", "Plugins"},
+        {"Aucun plugin chargé", "No plugin loaded"},
+        {"Ouvrir le dossier des plugins…", "Open the plugins folder…"},
+
+        // ---- Misc ----
+        {"Sans titre", "Untitled"},
+        {"Glissez les points. Clic pour ajouter, clic droit pour supprimer.",
+         "Drag the points. Click to add, right-click to remove."},
+        {"Mode de fusion", "Blend mode"},
+        {"Taille de l'image", "Image size"},
+        {"Hauteur :", "Height:"},
+        {"Conserver le ratio", "Maintain aspect ratio"},
+        {"%1\n%2 × %3\n(clic milieu pour fermer)", "%1\n%2 × %3\n(middle-click to close)"},
+        {"Clic gauche pour dessiner avec la couleur primaire, clic droit avec la couleur secondaire.",
+         "Left click to draw with the primary color, right click with the secondary color."},
+        {"Sans titre - paint.software 1.1", "Untitled - paint.software 1.1"},
+        {"Astuce : F5–F8 affichent/masquent les fenêtres Outils, Historique, ",
+         "Tip: F5–F8 show/hide the Tools, History, "},
+
+        // ---- Effect dialogs: titles ----
+        {"Flou", "Blur"},
+        {"Flou directionnel", "Motion Blur"},
+        {"Flou radial", "Radial Blur"},
+        {"Flou de zoom", "Zoom Blur"},
+        {"Flou de surface", "Surface Blur"},
+        {"Ajouter du bruit", "Add Noise"},
+        {"Médiane", "Median"},
+        {"Relief", "Relief"},
+        {"Bombement", "Bulge"},
+        {"Torsion", "Twist"},
+        {"Bosselure", "Dents"},
+        {"Cristalliser", "Crystalize"},
+        {"Fragment", "Fragment"},
+        {"Nuages", "Clouds"},
+        {"Turbulence", "Turbulence"},
+        {"Inversion polaire", "Polar Inversion"},
+        {"Quantifier", "Quantize"},
+        {"Lueur", "Glow"},
+        {"Vignette", "Vignette"},
+        {"Morphologie", "Morphology"},
+        {"Peinture à l'huile", "Oil Painting"},
+        {"Croquis au crayon", "Pencil Sketch"},
+        {"Adoucir le portrait", "Soften Portrait"},
+        {"Suppression yeux rouges", "Red Eye Removal"},
+
+        // ---- Effect dialogs: labels ----
+        {"Rayon :", "Radius:"},
+        {"Quantité :", "Amount:"},
+        {"Intensité :", "Intensity:"},
+        {"Angle :", "Angle:"},
+        {"Distance :", "Distance:"},
+        {"Échelle :", "Scale:"},
+        {"Force :", "Strength:"},
+        {"Douceur :", "Softness:"},
+        {"Épaisseur :", "Thickness:"},
+        {"Rugosité :", "Roughness:"},
+        {"Réfraction :", "Refraction:"},
+        {"Rotation :", "Rotation:"},
+        {"Saturation :", "Saturation:"},
+        {"Seuil :", "Threshold:"},
+        {"Couleurs :", "Colors:"},
+        {"Fragments :", "Fragments:"},
+        {"Luminosité :", "Brightness:"},
+        {"Chaleur :", "Warmth:"},
+        {"Contour encre :", "Ink outline:"},
+        {"Taille de cellule :", "Cell size:"},
+        {"Taille de tuile :", "Tile size:"},
+        {"Taille du pinceau :", "Brush size:"},
+        {"Taille de mine :", "Pencil tip size:"},
+        {"Quantité (-100 à 100) :", "Amount (-100 to 100):"},
+        {"Quantité (-360 à 360) :", "Amount (-360 to 360):"},
+
+        // ---- New document / layer properties dialogs ----
+        {"Préréglage :", "Preset:"},
+        {"Personnalisé", "Custom"},
+        {"Résolution :", "Resolution:"},
+        {"Arrière-plan :", "Background:"},
+        {"Couleur d'arrière-plan", "Background color"},
+        {"Général", "General"},
+        {"Opacité", "Opacity"},
+
+        // ---- Panels / plugins ----
+        {"Annuler (Ctrl+Z)", "Undo (Ctrl+Z)"},
+        {"Rétablir (Ctrl+Y)", "Redo (Ctrl+Y)"},
+        {"Réinitialiser les couleurs par défaut", "Reset to the default colors"},
+        {"Permuter les couleurs", "Swap colors"},
+        {"Paramètre %1", "Parameter %1"},
+
+        // ---- Messages ----
+        {"Impossible de charger le fichier image.", "Could not load the image file."},
+        {"Une sauvegarde automatique a été trouvée (%1, %2).\nVoulez-vous la récupérer ?", "An autosave was found (%1, %2).\nDo you want to recover it?"},
+        {"Ce format ne conserve pas les calques : l'image sera aplatie.\nUtilisez le format .psw pour garder vos calques.\n\nContinuer ?", "This format does not keep layers: the image will be flattened.\nUse the .psw format to keep your layers.\n\nContinue?"},
     };
     return m;
 }
@@ -444,8 +578,11 @@ Lang language() { return g_lang; }
 
 void loadFromSettings() {
     QSettings s("PaintDali", "PaintDali");
-    const QString v = s.value("ui/language", "fr").toString();
-    g_lang = (v == "en") ? Lang::English : Lang::French;
+    // English by default: the app ships worldwide, so a first run with no saved
+    // choice should land on the more widely understood language. Picking a
+    // language in Settings writes the key, and that choice then wins forever.
+    const QString v = s.value("ui/language", "en").toString();
+    g_lang = (v == "fr") ? Lang::French : Lang::English;
 }
 
 void saveToSettings() {
@@ -454,9 +591,15 @@ void saveToSettings() {
 }
 
 QString t(const QString &french) {
-    if (g_lang == Lang::French) return french;
+    // A "text|context" key disambiguates one French string that needs two
+    // different English words — "Annuler" is Undo in the Edit menu but Cancel on
+    // a dialog button, and a single table can only hold one of them. The context
+    // suffix is never displayed.
+    const int bar = french.indexOf(QLatin1Char('|'));
+    const QString plain = (bar < 0) ? french : french.left(bar);
+    if (g_lang == Lang::French) return plain;
     auto it = table().constFind(french);
-    return (it != table().constEnd()) ? it.value() : french;
+    return (it != table().constEnd()) ? it.value() : plain;
 }
 
 } // namespace I18n

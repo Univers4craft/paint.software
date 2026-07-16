@@ -1,4 +1,5 @@
 #include "layerpropertiesdialog.h"
+#include "../i18n.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -8,14 +9,14 @@
 LayerPropertiesDialog::LayerPropertiesDialog(Layer *layer, QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle("Propriétés du calque");
+    setWindowTitle(TR("Propriétés du calque"));
     setFixedWidth(340);
 
     auto *layout = new QVBoxLayout(this);
     layout->setSpacing(8);
 
     // Section générale
-    auto *generalGroup = new QGroupBox("Général");
+    auto *generalGroup = new QGroupBox(TR("Général"));
     auto *generalForm = new QFormLayout(generalGroup);
     generalForm->setSpacing(6);
 
@@ -29,7 +30,7 @@ LayerPropertiesDialog::LayerPropertiesDialog(Layer *layer, QWidget *parent)
     layout->addWidget(generalGroup);
 
     // Section mode de fusion
-    auto *blendGroup = new QGroupBox("Mode de fusion");
+    auto *blendGroup = new QGroupBox(TR("Mode de fusion"));
     auto *blendLayout = new QVBoxLayout(blendGroup);
 
     m_blendModeCombo = new QComboBox;
@@ -41,7 +42,7 @@ LayerPropertiesDialog::LayerPropertiesDialog(Layer *layer, QWidget *parent)
     layout->addWidget(blendGroup);
 
     // Section opacité
-    auto *opacityGroup = new QGroupBox("Opacité");
+    auto *opacityGroup = new QGroupBox(TR("Opacité"));
     auto *opacityLayout = new QHBoxLayout(opacityGroup);
 
     m_opacitySlider = new QSlider(Qt::Horizontal);

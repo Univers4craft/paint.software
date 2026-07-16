@@ -9,6 +9,17 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui PrintSupport)
 
+# Single source of truth for the version shown to users. CI passes
+# -DPAINTSW_VERSION=<major.minor.commitcount>; a local build falls back to the
+# project version. It reaches both the binary (title bar, About) and the .deb, so
+# they can no longer drift apart — they were hard-coded and stuck at 1.0/1.1.
+if(DEFINED PAINTSW_VERSION AND NOT PAINTSW_VERSION STREQUAL "")
+  set(PAINTSW_VERSION_STR "${PAINTSW_VERSION}")
+else()
+  set(PAINTSW_VERSION_STR "${PROJECT_VERSION}")
+endif()
+message(STATUS "paint.software version: ${PAINTSW_VERSION_STR}")
+
 set(CORE_SOURCES
     src/core/document.cpp
     src/core/layer.cpp
@@ -160,6 +171,8 @@ target_link_libraries(paintdotnet PRIVATE
     Qt6::Gui
 )
 
+target_compile_definitions(paintdotnet PRIVATE PAINTSW_VERSION_STR="${PAINTSW_VERSION_STR}")
+
 install(TARGETS paintdotnet DESTINATION bin)
 
 # ---- Test harness (headless functional tests) ----
@@ -209,11 +222,7 @@ set(CPACK_PACKAGE_NAME "paint.software")
 set(CPACK_PACKAGE_VENDOR "Univers4craft")
 # CI passes -DPAINTSW_VERSION=<major.minor.commitcount> so every push to main
 # produces a higher version that APT sees as an upgrade; otherwise use PROJECT_VERSION.
-if(DEFINED PAINTSW_VERSION AND NOT PAINTSW_VERSION STREQUAL "")
-  set(CPACK_PACKAGE_VERSION "${PAINTSW_VERSION}")
-else()
-  set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-endif()
+set(CPACK_PACKAGE_VERSION "${PAINTSW_VERSION_STR}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Open-source Paint.NET clone for Linux (C++/Qt6)")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/Univers4craft/paint.software")
 set(CPACK_PACKAGE_CONTACT "Univers4craft <Univers4craft@users.noreply.github.com>")

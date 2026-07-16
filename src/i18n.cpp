@@ -482,6 +482,8 @@ const QHash<QString, QString> &table() {
 
         // ---- Misc ----
         {"Sans titre", "Untitled"},
+        {"Version", "Version"},
+        {"édition Linux", "Linux edition"},
 
         // ---- Resize / Canvas size / Hue-Saturation dialogs ----
         {"Redimensionner", "Resize"},
@@ -511,7 +513,6 @@ const QHash<QString, QString> &table() {
         {"Hauteur :", "Height:"},
         {"Conserver le ratio", "Maintain aspect ratio"},
         {"%1\n%2 × %3\n(clic milieu pour fermer)", "%1\n%2 × %3\n(middle-click to close)"},
-        {"Sans titre - paint.software 1.1", "Untitled - paint.software 1.1"},
         {"Astuce : F5–F8 affichent/masquent les fenêtres Outils, Historique, ",
          "Tip: F5–F8 show/hide the Tools, History, "},
 

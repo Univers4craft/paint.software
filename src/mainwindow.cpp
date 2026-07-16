@@ -123,8 +123,18 @@
 // One-line tool description used in tooltips (defined further down).
 QString toolDescription(ToolType t);
 
+// The version comes from the build system, so the title bar always names the
+// build actually running — it used to be hard-coded and drifted to 1.1 while the
+// package was on 1.1.31. Handy when someone reports a bug.
+#ifndef PAINTSW_VERSION_STR
+#define PAINTSW_VERSION_STR "dev"
+#endif
+static QString appTitleSuffix() {
+    return QStringLiteral(" - paint.software " PAINTSW_VERSION_STR);
+}
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    setWindowTitle(TR("Sans titre - paint.software 1.1"));
+    setWindowTitle(TR("Sans titre") + appTitleSuffix());
     resize(1400, 900);
     setMinimumSize(800, 600);
     setDockNestingEnabled(true);
@@ -830,7 +840,7 @@ void MainWindow::createMenuBarCornerIcons() {
     helpMenu->addAction(TR("À &propos de paint.software"), this, [this]() {
         QMessageBox::about(this, TR("À propos de paint.software"),
             "<h2>paint.software</h2>"
-            "<p>Version 1.0 — édition Linux</p>"
+            "<p>" + TR("Version") + " " PAINTSW_VERSION_STR " — " + TR("édition Linux") + "</p>"
             "<p>Un éditeur d'images puissant construit avec Qt et C++.</p>");
     });
     helpBtn->setMenu(helpMenu);
@@ -3052,7 +3062,7 @@ void MainWindow::updateTitle() {
     } else {
         filename = TR("Sans titre");
     }
-    setWindowTitle(filename + " - paint.software 1.1");
+    setWindowTitle(filename + appTitleSuffix());
 }
 
 void MainWindow::updateImageThumbnail() {

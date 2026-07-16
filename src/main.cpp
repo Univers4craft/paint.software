@@ -3,12 +3,17 @@
 #include <QFileInfo>
 #include "mainwindow.h"
 #include "i18n.h"
+
+// Set by CMake; only a hand-rolled build without the definition lands here.
+#ifndef PAINTSW_VERSION_STR
+#define PAINTSW_VERSION_STR "dev"
+#endif
 #include "theme.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("paint.software");
-    app.setApplicationVersion("1.0");
+    app.setApplicationVersion(QStringLiteral(PAINTSW_VERSION_STR));
     app.setOrganizationName("PaintDali");
     app.setWindowIcon(QIcon(":/paintdali-logo.png"));
 

@@ -1,10 +1,12 @@
 #pragma once
 #include "tool.h"
+#include "selectionhandles.h"
 #include <QPoint>
 #include <QImage>
 #include <QRect>
 
-// Moves the current selection marquee without moving pixel content
+// Moves the current selection marquee without moving pixel content. To stretch
+// the artwork itself, use MoveTool ("Move Selected Pixels").
 class MoveSelectionTool : public Tool {
 public:
     ToolType type() const override { return ToolType::MoveSelection; }
@@ -17,27 +19,9 @@ public:
     void drawOverlay(QPainter &painter, const CanvasWidget &canvas) override;
 
 private:
-    enum class ResizeHandle {
-        None,
-        TopLeft,
-        Top,
-        TopRight,
-        Right,
-        BottomRight,
-        Bottom,
-        BottomLeft,
-        Left
-    };
-
-    ResizeHandle handleAt(const QRect &rect, const QPointF &canvasPos, double zoom) const;
-    QRect resizedRect(const QRect &rect, ResizeHandle handle, const QPointF &canvasPos) const;
-    QRect normalizedWithMinimumSize(const QRect &rect) const;
-    QVector<QRectF> handleRects(const QRect &rect, double zoom) const;
-    double handleRadius(const QRect &rect, double zoom) const;
-
     bool m_moving = false;
     bool m_resizing = false;
-    ResizeHandle m_activeHandle = ResizeHandle::None;
+    SelHandles::Handle m_activeHandle = SelHandles::Handle::None;
     QPointF m_startPos;
     QPointF m_lastPos;
     QRect m_originalSelectionRect;

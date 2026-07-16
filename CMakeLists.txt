@@ -31,6 +31,7 @@ set(TOOLS_SOURCES
     src/tools/selectiontool.cpp
     src/tools/lassotool.cpp
     src/tools/movetool.cpp
+    src/tools/selectionhandles.cpp
     src/tools/moveselectiontool.cpp
     src/tools/zoomtool.cpp
     src/tools/pantool.cpp

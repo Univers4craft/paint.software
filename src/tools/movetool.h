@@ -1,6 +1,8 @@
 #pragma once
 #include "tool.h"
+#include "selectionhandles.h"
 #include <QImage>
+#include <QRect>
 
 class MoveTool : public Tool {
 public:
@@ -11,6 +13,7 @@ public:
     void mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
     void mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) override;
+    void drawOverlay(QPainter &painter, const CanvasWidget &canvas) override;
 
 private:
     bool m_moving = false;
@@ -25,4 +28,13 @@ private:
     QImage m_floating;        // the selected pixels on transparent, document-sized
     QImage m_hole;            // the layer with the selected pixels erased
     QPoint m_lastDelta;       // last applied marquee translation (incremental)
+
+    // Dragging a handle rescales the artwork itself, not just the marquee: the
+    // selected pixels are stretched or squashed onto the new bounds.
+    bool m_resizing = false;
+    SelHandles::Handle m_handle = SelHandles::Handle::None;
+    QRect m_originalRect;     // selection bounds at press
+    QRect m_previewRect;      // bounds being dragged to
+    QImage m_floatingCrop;    // the lifted pixels, cropped to m_originalRect
+    QImage m_originalMask;    // selection mask at press, rescaled alongside
 };

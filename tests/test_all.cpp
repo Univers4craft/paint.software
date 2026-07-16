@@ -10,6 +10,7 @@
 #include <QFile>
 #include <cstdio>
 #include <functional>
+#include <climits>
 
 #include "core/document.h"
 #include "core/layer.h"
@@ -976,6 +977,128 @@ int main(int argc, char **argv) {
             }
         } else {
             printf("  (skipped: build/plugins/sample_sepia_plugin.so not present)\n");
+        }
+    }
+
+    // ---------- MOVE TOOL: RESIZING THE SELECTED PIXELS ----------
+    printf("\n--- Move tool: resize selected pixels ---\n");
+    {
+        // Dragging a handle must stretch or squash the artwork itself, like
+        // paint.net's Move Selected Pixels. The tool had no handles at all, so
+        // shrinking a selected area was impossible with any tool.
+        auto redBounds = [](const QImage &img) {
+            int x0 = INT_MAX, y0 = INT_MAX, x1 = -1, y1 = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    if (c.red() > 150 && c.green() < 90 && c.blue() < 90 && c.alpha() > 100) {
+                        x0 = std::min(x0, x); y0 = std::min(y0, y);
+                        x1 = std::max(x1, x); y1 = std::max(y1, y);
+                    }
+                }
+            return x1 < 0 ? QRect() : QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        };
+        auto dragRed = [&](QPointF grab, QPointF to) {
+            Document doc(200, 200);
+            doc.activeLayer()->clear(Qt::white);
+            { QPainter p(&doc.activeLayer()->image()); p.fillRect(QRect(40, 40, 60, 60), Qt::red); }
+            doc.selection().selectRect(QRect(40, 40, 60, 60));
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            canvas.setZoom(1.0);
+            MoveTool tool;
+            QMouseEvent e1(QEvent::MouseButtonPress, grab, grab, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mousePressEvent(grab, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+            return redBounds(doc.activeLayer()->image());
+        };
+        auto near = [](int a, int b) { return std::abs(a - b) <= 3; };
+
+        QRect r = dragRed(QPointF(99, 99), QPointF(139, 139));
+        CHECK(near(r.width(), 100) && near(r.height(), 100), "corner handle grows the artwork");
+        r = dragRed(QPointF(99, 99), QPointF(69, 69));
+        CHECK(near(r.width(), 30) && near(r.height(), 30), "corner handle shrinks the artwork");
+        r = dragRed(QPointF(70, 99), QPointF(70, 60));
+        CHECK(near(r.width(), 60) && r.height() < 30, "bottom handle squashes the artwork flat");
+        r = dragRed(QPointF(99, 70), QPointF(159, 70));
+        CHECK(near(r.width(), 120) && near(r.height(), 60), "right handle stretches width only");
+        // Pressing away from any handle must still move, not resize.
+        r = dragRed(QPointF(70, 70), QPointF(100, 100));
+        CHECK(near(r.width(), 60) && near(r.height(), 60) && near(r.x(), 70) && near(r.y(), 70),
+              "pressing inside still moves the artwork unscaled");
+    }
+
+    // ---------- MOVE TOOL TARGETS THE ACTIVE LAYER ----------
+    printf("\n--- Move tool acts on the selected layer ---\n");
+    {
+        // The selection is document-wide, so it can be drawn while one layer is
+        // active and then used after switching to another. Whatever is on screen,
+        // the edit must land on the SELECTED layer and leave the others alone.
+        auto colourBounds = [](const QImage &img, QColor want) {
+            int x0 = INT_MAX, y0 = INT_MAX, x1 = -1, y1 = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    if (c.alpha() > 100 && std::abs(c.red() - want.red()) < 60
+                        && std::abs(c.green() - want.green()) < 60
+                        && std::abs(c.blue() - want.blue()) < 60) {
+                        x0 = std::min(x0, x); y0 = std::min(y0, y);
+                        x1 = std::max(x1, x); y1 = std::max(y1, y);
+                    }
+                }
+            return x1 < 0 ? QRect() : QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        };
+        // Two layers, same square: red underneath, blue on top.
+        auto build = [](Document &doc) {
+            doc.activeLayer()->clear(Qt::transparent);
+            { QPainter p(&doc.layerAt(0)->image()); p.fillRect(QRect(40, 40, 60, 60), Qt::red); }
+            doc.addLayer();
+            { QPainter p(&doc.layerAt(1)->image()); p.fillRect(QRect(40, 40, 60, 60), Qt::blue); }
+            doc.setActiveLayer(0);
+            doc.selection().selectRect(QRect(40, 40, 60, 60));   // drawn on layer 0
+            doc.setActiveLayer(1);                               // but layer 1 is selected
+        };
+        auto drag = [](Document &doc, QPointF from, QPointF to) {
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            canvas.setZoom(1.0);
+            MoveTool tool;
+            QMouseEvent e1(QEvent::MouseButtonPress, from, from, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mousePressEvent(from, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+        };
+
+        {   // resizing via a handle
+            Document doc(200, 200);
+            build(doc);
+            drag(doc, QPointF(99, 99), QPointF(69, 69));
+            const QRect blue = colourBounds(doc.layerAt(1)->image(), Qt::blue);
+            const QRect red = colourBounds(doc.layerAt(0)->image(), Qt::red);
+            CHECK(blue.width() < 40 && blue.height() < 40, "resize scales the SELECTED layer");
+            CHECK(red == QRect(40, 40, 60, 60), "resize leaves the other layer untouched");
+        }
+        {   // plain move
+            Document doc(200, 200);
+            build(doc);
+            drag(doc, QPointF(70, 70), QPointF(100, 100));
+            const QRect blue = colourBounds(doc.layerAt(1)->image(), Qt::blue);
+            const QRect red = colourBounds(doc.layerAt(0)->image(), Qt::red);
+            CHECK(blue.x() > 55, "move shifts the SELECTED layer");
+            CHECK(red == QRect(40, 40, 60, 60), "move leaves the other layer untouched");
+        }
+        {   // a locked layer must refuse both
+            Document doc(200, 200);
+            build(doc);
+            doc.layerAt(1)->setLocked(true);
+            const QImage before = doc.layerAt(1)->image().copy();
+            drag(doc, QPointF(99, 99), QPointF(69, 69));
+            CHECK(doc.layerAt(1)->image() == before, "a locked layer is not resized");
         }
     }
 

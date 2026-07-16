@@ -15,6 +15,7 @@
 #include "core/document.h"
 #include "core/layer.h"
 #include "core/selection.h"
+#include "core/history.h"
 #include "canvas/canvaswidget.h"
 #include "i18n.h"
 #include "theme.h"
@@ -1029,6 +1030,50 @@ int main(int argc, char **argv) {
         r = dragRed(QPointF(70, 70), QPointF(100, 100));
         CHECK(near(r.width(), 60) && near(r.height(), 60) && near(r.x(), 70) && near(r.y(), 70),
               "pressing inside still moves the artwork unscaled");
+    }
+
+    // ---------- UNDO/REDO OF A PIXEL RESIZE ----------
+    printf("\n--- Move tool: undo/redo a resize ---\n");
+    {
+        Document doc(200, 200);
+        doc.activeLayer()->clear(Qt::white);
+        { QPainter p(&doc.activeLayer()->image()); p.fillRect(QRect(40, 40, 60, 60), Qt::red); }
+        doc.selection().selectRect(QRect(40, 40, 60, 60));
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+        canvas.setZoom(1.0);
+
+        auto redRect = [&]() {
+            const QImage &img = doc.activeLayer()->image();
+            int x0 = INT_MAX, y0 = INT_MAX, x1 = -1, y1 = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    if (c.red() > 150 && c.green() < 90 && c.blue() < 90 && c.alpha() > 100) {
+                        x0 = std::min(x0, x); y0 = std::min(y0, y);
+                        x1 = std::max(x1, x); y1 = std::max(y1, y);
+                    }
+                }
+            return x1 < 0 ? QRect() : QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        };
+
+        MoveTool tool;
+        const QPointF grab(99, 99), to(69, 69);
+        QMouseEvent e1(QEvent::MouseButtonPress, grab, grab, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        tool.mousePressEvent(grab, &e1, canvas);
+        QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        tool.mouseMoveEvent(to, &e2, canvas);
+        QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        tool.mouseReleaseEvent(to, &e3, canvas);
+
+        CHECK(redRect().width() < 40, "resize shrank the artwork");
+        // One drag must leave exactly one undo step, and it must put the pixels back.
+        CHECK(doc.history().canUndo(), "a resize is undoable");
+        doc.history().undo();
+        CHECK(redRect() == QRect(40, 40, 60, 60), "undo restores the original artwork");
+        CHECK(doc.history().canRedo(), "a resize is redoable");
+        doc.history().redo();
+        CHECK(redRect().width() < 40, "redo re-applies the resize");
     }
 
     // ---------- MOVE TOOL TARGETS THE ACTIVE LAYER ----------

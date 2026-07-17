@@ -67,6 +67,8 @@ private slots:
     void copyMerged();
     void paste();
     void pasteIntoNewLayer();
+    void pasteIntoNewImage();   // clipboard image -> its own document (Ctrl+Alt+V)
+    void fillSelection();       // fill the selection with the primary colour (Backspace)
     void selectAll();
     void deselectAll();
     void invertSelection();

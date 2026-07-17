@@ -388,6 +388,8 @@ const QHash<QString, QString> &table() {
         // ---- New adjustments / effects / edit items ----
         {"Copier &fusionné", "Copy &Merged"},
         {"Coller dans un &nouveau calque", "Paste into &New Layer"},
+        {"Coller dans une nouvelle &image", "Paste into New &Image"},
+        {"&Remplir la sélection", "&Fill Selection"},
         {"Zoom sur la &sélection", "Zoom to &Selection"},
         {"Exposition...", "Exposure..."},
         {"Exposition", "Exposure"},

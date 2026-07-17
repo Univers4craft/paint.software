@@ -167,6 +167,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_canvas, &CanvasWidget::cursorPositionChanged, this, &MainWindow::updateStatusBar);
     connect(m_canvas, &CanvasWidget::zoomChanged, this, &MainWindow::onZoomChanged);
     connect(m_canvas, &CanvasWidget::deleteSelectionRequested, this, &MainWindow::deleteSelectionContents);
+    connect(m_canvas, &CanvasWidget::fillSelectionRequested, this, &MainWindow::fillSelection);
     connect(m_canvas, &CanvasWidget::selectionContextMenuRequested, this, &MainWindow::showSelectionContextMenu);
     connect(m_document, &Document::documentChanged, this, &MainWindow::updateTitle);
     connect(m_document, &Document::documentChanged, this, &MainWindow::updateImageList);
@@ -410,8 +411,11 @@ void MainWindow::createMenus() {
     editMenu->addAction(TR("Copier &fusionné"), QKeySequence("Ctrl+Shift+C"), this, &MainWindow::copyMerged);
     auto *pasteAction = editMenu->addAction(TR("Co&ller"), QKeySequence::Paste, this, &MainWindow::paste);
     editMenu->addAction(TR("Coller dans un &nouveau calque"), QKeySequence("Ctrl+Shift+V"), this, &MainWindow::pasteIntoNewLayer);
+    editMenu->addAction(TR("Coller dans une nouvelle &image"), QKeySequence("Ctrl+Alt+V"), this, &MainWindow::pasteIntoNewImage);
     auto *deleteSelectionAction = editMenu->addAction(TR("&Supprimer"), QKeySequence(Qt::Key_Delete), this, &MainWindow::deleteSelectionContents);
     deleteSelectionAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    auto *fillSelectionAction = editMenu->addAction(TR("&Remplir la sélection"), QKeySequence(Qt::Key_Backspace), this, &MainWindow::fillSelection);
+    fillSelectionAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     editMenu->addSeparator();
     auto *selectAllAction = editMenu->addAction(TR("&Tout sélectionner"), QKeySequence::SelectAll, this, &MainWindow::selectAll);
     auto *deselectAction = editMenu->addAction(TR("&Désélectionner"), QKeySequence("Ctrl+D"), this, &MainWindow::deselectAll);
@@ -1939,6 +1943,44 @@ void MainWindow::pasteIntoNewLayer() {
     // In this implementation regular paste already lands on a new layer; this
     // menu item makes the intent explicit and is what paint.net users expect.
     paste();
+}
+
+void MainWindow::pasteIntoNewImage() {
+    // Paint.NET's "Paste into New Image": open the clipboard image as its own
+    // document, sized to the image, rather than dropping it on the current one.
+    const QImage img = QApplication::clipboard()->image();
+    if (img.isNull()) return;
+    auto *doc = new Document(img.width(), img.height(), this);
+    doc->activeLayer()->setImage(img.convertToFormat(QImage::Format_ARGB32_Premultiplied));
+    doc->setModified(false);
+    addDocument(doc);
+}
+
+void MainWindow::fillSelection() {
+    // Paint.NET's "Fill Selection" (Backspace): flood the selected region — or the
+    // whole active layer when nothing is selected — with the primary colour.
+    if (!m_document) return;
+    auto *layer = m_document->activeLayer();
+    if (!layer || layer->isLocked()) return;
+
+    QImage before = layer->image().copy();
+    QPainter p(&layer->image());
+    p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    if (m_document->selection().hasSelection()) {
+        // Paint only where the selection mask is set, honouring the layer offset.
+        QImage fill(layer->image().size(), QImage::Format_ARGB32_Premultiplied);
+        fill.fill(m_document->primaryColor());
+        fill = m_document->selection().getMaskedImage(fill, layer->offset());
+        p.drawImage(0, 0, fill);
+    } else {
+        p.fillRect(layer->image().rect(), m_document->primaryColor());
+    }
+    p.end();
+
+    if (layer->image() != before) {
+        m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Remplir la selection");
+        m_canvas->updateCanvas();
+    }
 }
 
 void MainWindow::selectAll() {

@@ -64,6 +64,7 @@ signals:
     void cursorPositionChanged(const QPoint &pos);
     void canvasModified();
     void deleteSelectionRequested();
+    void fillSelectionRequested();
     void selectionContextMenuRequested(const QPoint &globalPos);
 
 protected:

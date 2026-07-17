@@ -1023,6 +1023,44 @@ int main(int argc, char **argv) {
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
     }
 
+    // ---------- FILL SELECTION ----------
+    printf("\n--- Fill selection ---\n");
+    {
+        auto fillMasked = [](Document &doc) {
+            // Mirror MainWindow::fillSelection's masked path.
+            Layer *layer = doc.activeLayer();
+            QImage fill(layer->image().size(), QImage::Format_ARGB32_Premultiplied);
+            fill.fill(doc.primaryColor());
+            fill = doc.selection().getMaskedImage(fill, layer->offset());
+            QPainter p(&layer->image());
+            p.drawImage(0, 0, fill);
+        };
+        auto redCount = [](const QImage &in) {
+            const QImage img = in.convertToFormat(QImage::Format_ARGB32);
+            long n = 0;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    if (c.red() > 200 && c.green() < 60 && c.blue() < 60) ++n;
+                }
+            return n;
+        };
+
+        Document doc(40, 40);
+        doc.activeLayer()->clear(Qt::white);
+        doc.setPrimaryColor(Qt::red);
+        doc.selection().selectRect(QRect(10, 10, 20, 20));   // 400 px
+        fillMasked(doc);
+        CHECK(redCount(doc.activeLayer()->image()) == 400, "fill selection paints only the 400 selected pixels");
+
+        // No selection -> whole layer is fair game (MainWindow fills the rect).
+        Document doc2(30, 30);
+        doc2.activeLayer()->clear(Qt::white);
+        doc2.setPrimaryColor(Qt::red);
+        { QPainter p(&doc2.activeLayer()->image()); p.fillRect(doc2.activeLayer()->image().rect(), doc2.primaryColor()); }
+        CHECK(redCount(doc2.activeLayer()->image()) == 900, "fill with no selection covers the whole layer");
+    }
+
     // ---------- PASTE TEXT INTO THE TEXT TOOL ----------
     printf("\n--- Text tool: paste ---\n");
     {

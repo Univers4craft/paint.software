@@ -482,6 +482,15 @@ void CanvasWidget::keyPressEvent(QKeyEvent *event) {
         event->accept();
         return;
     }
+    // Backspace fills the selection (paint.net). Handled here, like Delete, so it
+    // fires reliably whenever the canvas has focus — but not while the Text tool
+    // is typing, where Backspace must delete a character instead.
+    if (event->key() == Qt::Key_Backspace && m_document
+        && !(m_currentTool && m_currentTool->wantsKeyInput())) {
+        emit fillSelectionRequested();
+        event->accept();
+        return;
+    }
 
     if (m_currentTool) {
         m_currentTool->keyPressEvent(event, *this);

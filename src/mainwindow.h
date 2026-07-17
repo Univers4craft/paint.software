@@ -71,6 +71,9 @@ private slots:
     void fillSelection();       // fill the selection with the primary colour (Backspace)
     void selectAll();
     void deselectAll();
+    void growSelection();       // expand the selection outward by N px
+    void shrinkSelection();     // contract the selection inward by N px
+    void featherSelection();    // soften the selection edge by N px
     void invertSelection();
 
     // Image

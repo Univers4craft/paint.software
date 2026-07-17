@@ -420,6 +420,10 @@ void MainWindow::createMenus() {
     auto *selectAllAction = editMenu->addAction(TR("&Tout sélectionner"), QKeySequence::SelectAll, this, &MainWindow::selectAll);
     auto *deselectAction = editMenu->addAction(TR("&Désélectionner"), QKeySequence("Ctrl+D"), this, &MainWindow::deselectAll);
     auto *invertSelectionAction = editMenu->addAction(TR("&Inverser la sélection"), QKeySequence("Ctrl+I"), this, &MainWindow::invertSelection);
+    auto *modifySelMenu = editMenu->addMenu(TR("&Modifier la sélection"));
+    modifySelMenu->addAction(TR("&Agrandir..."), this, &MainWindow::growSelection);
+    modifySelMenu->addAction(TR("&Rétrécir..."), this, &MainWindow::shrinkSelection);
+    modifySelMenu->addAction(TR("A&doucir les bords..."), this, &MainWindow::featherSelection);
     setShortcuts(cutAction, {QKeySequence::Cut, QKeySequence("Shift+Delete")});
     setShortcuts(copyAction, {QKeySequence::Copy, QKeySequence("Ctrl+Insert")});
     setShortcuts(pasteAction, {QKeySequence::Paste, QKeySequence("Shift+Insert")});
@@ -1997,6 +2001,39 @@ void MainWindow::deselectAll() {
 
 void MainWindow::invertSelection() {
     m_document->selection().invert();
+    emit m_document->selectionChanged();
+    m_canvas->update();
+}
+
+void MainWindow::growSelection() {
+    if (!m_document || !m_document->selection().hasSelection()) return;
+    bool ok = false;
+    const int px = QInputDialog::getInt(this, TR("Agrandir la sélection"),
+                                        TR("Agrandir de (pixels) :"), 1, 1, 500, 1, &ok);
+    if (!ok) return;
+    m_document->selection().expand(px);
+    emit m_document->selectionChanged();
+    m_canvas->update();
+}
+
+void MainWindow::shrinkSelection() {
+    if (!m_document || !m_document->selection().hasSelection()) return;
+    bool ok = false;
+    const int px = QInputDialog::getInt(this, TR("Rétrécir la sélection"),
+                                        TR("Rétrécir de (pixels) :"), 1, 1, 500, 1, &ok);
+    if (!ok) return;
+    m_document->selection().contract(px);
+    emit m_document->selectionChanged();
+    m_canvas->update();
+}
+
+void MainWindow::featherSelection() {
+    if (!m_document || !m_document->selection().hasSelection()) return;
+    bool ok = false;
+    const int px = QInputDialog::getInt(this, TR("Adoucir la sélection"),
+                                        TR("Rayon d'adoucissement (pixels) :"), 2, 1, 200, 1, &ok);
+    if (!ok) return;
+    m_document->selection().feather(px);
     emit m_document->selectionChanged();
     m_canvas->update();
 }

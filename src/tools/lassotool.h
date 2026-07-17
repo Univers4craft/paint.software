@@ -17,4 +17,6 @@ public:
 private:
     bool m_selecting = false;
     QPolygonF m_lasso;
+    // Captured at press: the modifier state can change before release.
+    Qt::KeyboardModifiers m_modifiers = Qt::NoModifier;
 };

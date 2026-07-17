@@ -47,6 +47,16 @@ const QHash<QString, QString> &table() {
         {"&Tout sélectionner", "Select &All"},
         {"&Désélectionner", "&Deselect All"},
         {"&Inverser la sélection", "&Invert Selection"},
+        {"&Modifier la sélection", "Modif&y Selection"},
+        {"&Agrandir...", "&Grow..."},
+        {"&Rétrécir...", "Shr&ink..."},
+        {"A&doucir les bords...", "&Feather..."},
+        {"Agrandir la sélection", "Grow Selection"},
+        {"Agrandir de (pixels) :", "Grow by (pixels):"},
+        {"Rétrécir la sélection", "Shrink Selection"},
+        {"Rétrécir de (pixels) :", "Shrink by (pixels):"},
+        {"Adoucir la sélection", "Feather Selection"},
+        {"Rayon d'adoucissement (pixels) :", "Feather radius (pixels):"},
 
         // ---- View menu ----
         {"Zoom a&vant", "Zoom &In"},

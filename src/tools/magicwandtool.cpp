@@ -11,9 +11,7 @@ void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event
     QImage image = doc->flattenVisible();
     if (!image.valid(pos)) return;
 
-    SelectionMode mode = SelectionMode::Replace;
-    if (event->modifiers() & Qt::ShiftModifier) mode = SelectionMode::Add;
-    else if (event->modifiers() & Qt::ControlModifier) mode = SelectionMode::Subtract;
+    const SelectionMode mode = selectionModeFor(event->modifiers());
 
     if (m_global) {
         // Select all pixels of the same color globally

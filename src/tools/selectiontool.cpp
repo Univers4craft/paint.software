@@ -29,9 +29,7 @@ void SelectionTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *eve
     if (rect.width() < 2 && rect.height() < 2) {
         doc->selection().clear();
     } else {
-        SelectionMode mode = SelectionMode::Replace;
-        if (event->modifiers() & Qt::ShiftModifier) mode = SelectionMode::Add;
-        else if (event->modifiers() & Qt::ControlModifier) mode = SelectionMode::Subtract;
+        const SelectionMode mode = selectionModeFor(event->modifiers());
 
         if (m_shape == SelectionShape::Rectangle)
             doc->selection().selectRect(rect, mode);

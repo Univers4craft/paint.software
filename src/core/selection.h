@@ -12,6 +12,18 @@ enum class SelectionMode {
     Intersect
 };
 
+// One place decides how modifier keys pick the selection mode, so every
+// selection tool (rectangle, ellipse, lasso, magic wand) behaves the same:
+//   Shift = add, Ctrl = subtract, Shift+Ctrl = intersect, nothing = replace.
+inline SelectionMode selectionModeFor(Qt::KeyboardModifiers mods) {
+    const bool shift = mods & Qt::ShiftModifier;
+    const bool ctrl = mods & Qt::ControlModifier;
+    if (shift && ctrl) return SelectionMode::Intersect;
+    if (shift) return SelectionMode::Add;
+    if (ctrl) return SelectionMode::Subtract;
+    return SelectionMode::Replace;
+}
+
 class Selection {
 public:
     Selection();

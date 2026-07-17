@@ -1023,6 +1023,42 @@ int main(int argc, char **argv) {
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
     }
 
+    // ---------- SELECTION MODES + GROW/SHRINK/FEATHER ----------
+    printf("\n--- Selection modes and modify ---\n");
+    {
+        auto area = [](const Selection &s, int w, int h) {
+            long n = 0;
+            for (int y = 0; y < h; ++y)
+                for (int x = 0; x < w; ++x)
+                    if (s.isSelected(x, y)) ++n;
+            return n;
+        };
+        // The shared modifier→mode helper every selection tool now uses.
+        CHECK(selectionModeFor(Qt::NoModifier) == SelectionMode::Replace, "no modifier = replace");
+        CHECK(selectionModeFor(Qt::ShiftModifier) == SelectionMode::Add, "shift = add");
+        CHECK(selectionModeFor(Qt::ControlModifier) == SelectionMode::Subtract, "ctrl = subtract");
+        CHECK(selectionModeFor(Qt::ShiftModifier | Qt::ControlModifier) == SelectionMode::Intersect,
+              "shift+ctrl = intersect");
+
+        {   // intersect keeps only the overlap
+            Selection s(100, 100);
+            s.selectRect(QRect(10, 10, 40, 40));
+            s.selectRect(QRect(30, 30, 40, 40), SelectionMode::Intersect);
+            CHECK(area(s, 100, 100) == 400, "intersect keeps the 20x20 overlap");
+        }
+        {   // grow enlarges, shrink reduces
+            Selection s(100, 100);
+            s.selectRect(QRect(40, 40, 20, 20));
+            const long base = area(s, 100, 100);
+            s.expand(5);
+            CHECK(area(s, 100, 100) > base, "grow enlarges the selection");
+            Selection s2(100, 100);
+            s2.selectRect(QRect(40, 40, 20, 20));
+            s2.contract(3);
+            CHECK(area(s2, 100, 100) < base, "shrink reduces the selection");
+        }
+    }
+
     // ---------- FILL SELECTION ----------
     printf("\n--- Fill selection ---\n");
     {

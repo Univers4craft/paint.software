@@ -8,6 +8,7 @@
 void LassoTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &) {
     if (event->button() == Qt::LeftButton) {
         m_selecting = true;
+        m_modifiers = event->modifiers();
         m_lasso.clear();
         m_lasso << canvasPos;
     }
@@ -30,7 +31,7 @@ void LassoTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, 
             QPainterPath path;
             path.addPolygon(m_lasso);
             path.closeSubpath();
-            doc->selection().selectPath(path);
+            doc->selection().selectPath(path, selectionModeFor(m_modifiers));
             emit doc->selectionChanged();
         }
         m_lasso.clear();

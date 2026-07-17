@@ -74,6 +74,11 @@ private slots:
     void growSelection();       // expand the selection outward by N px
     void shrinkSelection();     // contract the selection inward by N px
     void featherSelection();    // soften the selection edge by N px
+    void moveActiveLayerUp();
+    void moveActiveLayerDown();
+    void importLayerFromFile();     // add an image file as a new layer
+    void flipActiveLayerHorizontal();
+    void flipActiveLayerVertical();
     void invertSelection();
 
     // Image

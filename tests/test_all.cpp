@@ -1023,6 +1023,44 @@ int main(int argc, char **argv) {
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
     }
 
+    // ---------- LAYER MOVE / FLIP / IMPORT ----------
+    printf("\n--- Layer move / flip / import ---\n");
+    {
+        {   // move reorders the stack
+            Document doc(20, 20);
+            doc.layerAt(0)->setName("A");
+            doc.addLayer();
+            doc.layerAt(1)->setName("B");
+            doc.moveLayer(0, 1);
+            CHECK(doc.layerAt(0)->name() == "B" && doc.layerAt(1)->name() == "A",
+                  "moving a layer up reorders the stack");
+        }
+        {   // per-layer horizontal flip swaps left/right, others untouched
+            Document doc(4, 1);
+            doc.addLayer();   // a second layer that must NOT move
+            doc.layerAt(1)->image().fill(Qt::green);
+            const QImage other = doc.layerAt(1)->image().copy();
+            QImage &img = doc.layerAt(0)->image();
+            img.fill(Qt::transparent);
+            img.setPixelColor(0, 0, Qt::red);
+            img.setPixelColor(3, 0, Qt::blue);
+            doc.layerAt(0)->setImage(img.mirrored(true, false));
+            CHECK(doc.layerAt(0)->image().pixelColor(0, 0).blue() > 200
+                  && doc.layerAt(0)->image().pixelColor(3, 0).red() > 200,
+                  "per-layer flip mirrors that layer");
+            CHECK(doc.layerAt(1)->image() == other, "per-layer flip leaves other layers alone");
+        }
+        {   // import adds an image as a new named layer
+            Document doc(10, 10);
+            const int before = doc.layerCount();
+            QImage img(6, 6, QImage::Format_ARGB32);
+            img.fill(Qt::green);
+            const int idx = doc.addLayer(img, "imported.png");
+            CHECK(doc.layerCount() == before + 1 && doc.layerAt(idx)->name() == "imported.png",
+                  "importing a file adds it as a new layer");
+        }
+    }
+
     // ---------- SELECTION MODES + GROW/SHRINK/FEATHER ----------
     printf("\n--- Selection modes and modify ---\n");
     {

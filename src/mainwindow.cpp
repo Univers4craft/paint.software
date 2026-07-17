@@ -488,6 +488,13 @@ void MainWindow::createMenus() {
     auto *deleteLayerAction = layersMenu->addAction(TR("Supprimer le calque"), this, [this]() { m_document->removeLayer(m_document->activeLayerIndex()); });
     layersMenu->addAction(TR("Dupliquer le calque"), QKeySequence("Ctrl+Shift+D"), this, [this]() { m_document->duplicateLayer(m_document->activeLayerIndex()); });
     layersMenu->addAction(TR("Fusionner vers le bas"), QKeySequence("Ctrl+M"), this, [this]() { m_document->mergeLayerDown(m_document->activeLayerIndex()); });
+    layersMenu->addAction(TR("Importer depuis un fichier..."), this, &MainWindow::importLayerFromFile);
+    layersMenu->addSeparator();
+    layersMenu->addAction(TR("Monter le calque"), QKeySequence("Ctrl+Shift+Up"), this, &MainWindow::moveActiveLayerUp);
+    layersMenu->addAction(TR("Descendre le calque"), QKeySequence("Ctrl+Shift+Down"), this, &MainWindow::moveActiveLayerDown);
+    auto *flipLayerMenu = layersMenu->addMenu(TR("Retourner le calque"));
+    flipLayerMenu->addAction(TR("&Horizontalement"), this, &MainWindow::flipActiveLayerHorizontal);
+    flipLayerMenu->addAction(TR("&Verticalement"), this, &MainWindow::flipActiveLayerVertical);
     layersMenu->addSeparator();
     auto *layerPropertiesAction = layersMenu->addAction(TR("&Propriétés du calque..."), this, &MainWindow::showLayerPropertiesDialog);
     auto *toggleLayerVisibilityAction = layersMenu->addAction(TR("Basculer la visibilité"), this, &MainWindow::toggleActiveLayerVisibility);
@@ -2003,6 +2010,58 @@ void MainWindow::invertSelection() {
     m_document->selection().invert();
     emit m_document->selectionChanged();
     m_canvas->update();
+}
+
+void MainWindow::moveActiveLayerUp() {
+    if (!m_document) return;
+    const int idx = m_document->activeLayerIndex();
+    if (idx < m_document->layerCount() - 1) {
+        m_document->moveLayer(idx, idx + 1);
+        m_canvas->updateCanvas();
+    }
+}
+
+void MainWindow::moveActiveLayerDown() {
+    if (!m_document) return;
+    const int idx = m_document->activeLayerIndex();
+    if (idx > 0) {
+        m_document->moveLayer(idx, idx - 1);
+        m_canvas->updateCanvas();
+    }
+}
+
+void MainWindow::importLayerFromFile() {
+    if (!m_document) return;
+    const QString file = QFileDialog::getOpenFileName(this, TR("Importer un calque depuis un fichier"),
+        QString(), TR("Images (*.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp)"));
+    if (file.isEmpty()) return;
+    QImage img(file);
+    if (img.isNull()) {
+        QMessageBox::warning(this, TR("Erreur"), TR("Impossible de charger le fichier image."));
+        return;
+    }
+    m_document->addLayer(img, QFileInfo(file).fileName());
+    m_canvas->updateCanvas();
+}
+
+void MainWindow::flipActiveLayerHorizontal() {
+    if (!m_document) return;
+    auto *layer = m_document->activeLayer();
+    if (!layer || layer->isLocked()) return;
+    QImage before = layer->image().copy();
+    layer->setImage(layer->image().mirrored(true, false));
+    m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Retourner le calque");
+    m_canvas->updateCanvas();
+}
+
+void MainWindow::flipActiveLayerVertical() {
+    if (!m_document) return;
+    auto *layer = m_document->activeLayer();
+    if (!layer || layer->isLocked()) return;
+    QImage before = layer->image().copy();
+    layer->setImage(layer->image().mirrored(false, true));
+    m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Retourner le calque");
+    m_canvas->updateCanvas();
 }
 
 void MainWindow::growSelection() {

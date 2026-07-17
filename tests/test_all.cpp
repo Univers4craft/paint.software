@@ -1023,6 +1023,65 @@ int main(int argc, char **argv) {
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
     }
 
+    // ---------- PASTE TEXT INTO THE TEXT TOOL ----------
+    printf("\n--- Text tool: paste ---\n");
+    {
+        auto inkWidth = [](const QImage &img) {
+            int x0 = INT_MAX, x1 = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                    if (qGray(img.pixel(x, y)) < 128) { x0 = std::min(x0, x); x1 = std::max(x1, x); }
+            return x1 < 0 ? 0 : x1 - x0 + 1;
+        };
+        auto inkHeight = [](const QImage &img) {
+            int y0 = INT_MAX, y1 = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                    if (qGray(img.pixel(x, y)) < 128) { y0 = std::min(y0, y); y1 = std::max(y1, y); }
+            return y1 < 0 ? 0 : y1 - y0 + 1;
+        };
+
+        {   // pasting while editing appends at the caret and renders
+            Document doc(400, 120);
+            doc.activeLayer()->clear(Qt::white);
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            TextTool tool;
+            canvas.setCurrentTool(&tool);
+            QMouseEvent pr(QEvent::MouseButtonPress, QPointF(10, 60), QPointF(10, 60),
+                           Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mousePressEvent(QPointF(10, 60), &pr, canvas);
+            tool.insertText("pasted", canvas);
+            tool.commitText(canvas);
+            CHECK(inkWidth(doc.activeLayer()->image()) > 20, "pasted text is drawn while editing");
+        }
+        {   // paste outside editing is a no-op — no text conjured from nowhere
+            Document doc(400, 120);
+            doc.activeLayer()->clear(Qt::white);
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            TextTool tool;
+            canvas.setCurrentTool(&tool);
+            tool.insertText("ghost", canvas);
+            tool.commitText(canvas);
+            CHECK(inkWidth(doc.activeLayer()->image()) == 0, "paste does nothing when not editing");
+        }
+        {   // pasted CRLF becomes a real line break
+            Document doc(400, 200);
+            doc.activeLayer()->clear(Qt::white);
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            TextTool tool;
+            canvas.setCurrentTool(&tool);
+            QMouseEvent pr(QEvent::MouseButtonPress, QPointF(10, 40), QPointF(10, 40),
+                           Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mousePressEvent(QPointF(10, 40), &pr, canvas);
+            tool.insertText("a\r\nb", canvas);
+            tool.commitText(canvas);
+            CHECK(inkHeight(doc.activeLayer()->image()) > 30, "pasted CRLF makes two lines");
+        }
+    }
+
     // ---------- MOVE TOOL: RESIZING THE SELECTED PIXELS ----------
     printf("\n--- Move tool: resize selected pixels ---\n");
     {

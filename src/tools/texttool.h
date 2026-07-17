@@ -13,6 +13,9 @@ public:
     void keyPressEvent(QKeyEvent *event, CanvasWidget &canvas) override;
     void drawOverlay(QPainter &painter, const CanvasWidget &canvas) override;
     bool wantsKeyInput() const override { return m_editing; }
+    // Insert clipboard text at the caret while editing. No-op otherwise, so a
+    // stray Ctrl+V can't create text out of nowhere.
+    void insertText(const QString &text, CanvasWidget &canvas);
 
     void setFont(const QFont &font) { m_font = font; }
     QFont font() const { return m_font; }

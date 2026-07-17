@@ -1920,6 +1920,15 @@ void MainWindow::copyMerged() {
 }
 
 void MainWindow::paste() {
+    // While the Text tool is typing, Ctrl+V inserts clipboard *text* at the caret
+    // rather than dropping a clipboard image onto a new layer.
+    if (m_currentTool && m_currentTool->type() == ToolType::Text && m_currentTool->wantsKeyInput()) {
+        const QString clip = QApplication::clipboard()->text();
+        if (!clip.isEmpty()) {
+            static_cast<TextTool *>(m_currentTool)->insertText(clip, *m_canvas);
+            return;
+        }
+    }
     QImage img = QApplication::clipboard()->image();
     if (img.isNull()) return;
     m_document->addLayer(img, "Calque collé");

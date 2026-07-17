@@ -40,6 +40,15 @@ void TextTool::keyPressEvent(QKeyEvent *event, CanvasWidget &canvas) {
     }
 }
 
+void TextTool::insertText(const QString &text, CanvasWidget &canvas) {
+    if (!m_editing || text.isEmpty()) return;
+    // Normalise line endings so pasted CRLF / lone CR behave like typed Enter.
+    QString clean = text;
+    clean.replace("\r\n", "\n").replace('\r', '\n');
+    m_text += clean;
+    canvas.update();
+}
+
 QFont TextTool::effectiveFont() const {
     QFont f = m_font;
     f.setBold(m_bold);

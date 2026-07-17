@@ -981,6 +981,48 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- TEXT TOOL SWALLOWS ITS OWN KEYS ----------
+    printf("\n--- Text tool captures shortcut letters ---\n");
+    {
+        // ~60% of the alphabet are also tool shortcuts (b, e, s, t, z…). Qt matches
+        // those before keyPressEvent, so typing dropped them. The canvas claims
+        // ShortcutOverride while the tool wants key input, so the letters arrive.
+        Document doc(200, 100);
+        doc.activeLayer()->clear(Qt::white);
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+        TextTool text;
+        canvas.setCurrentTool(&text);
+
+        CHECK(!text.wantsKeyInput(), "text tool doesn't grab keys until you click");
+        QMouseEvent press(QEvent::MouseButtonPress, QPointF(10, 40), QPointF(10, 40),
+                          Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        text.mousePressEvent(QPointF(10, 40), &press, canvas);
+        CHECK(text.wantsKeyInput(), "text tool grabs keys once editing");
+
+        // Every letter, including the shortcut ones, must be claimed as text.
+        int claimed = 0;
+        for (char c = 'a'; c <= 'z'; ++c) {
+            QKeyEvent so(QEvent::ShortcutOverride, Qt::Key_A + (c - 'a'), Qt::NoModifier, QString(c));
+            QApplication::sendEvent(&canvas, &so);
+            if (so.isAccepted()) ++claimed;
+        }
+        CHECK(claimed == 26, "the canvas claims every letter while typing");
+
+        // But a shortcut chord (Ctrl+…) must still pass through to the app.
+        QKeyEvent ctrlA(QEvent::ShortcutOverride, Qt::Key_A, Qt::ControlModifier, QString());
+        QApplication::sendEvent(&canvas, &ctrlA);
+        CHECK(!ctrlA.isAccepted(), "Ctrl-chords still reach the app while typing");
+
+        // Once editing ends, letters go back to being shortcuts.
+        QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        text.keyPressEvent(&esc, canvas);
+        CHECK(!text.wantsKeyInput(), "text tool releases keys after Escape");
+        QKeyEvent so(QEvent::ShortcutOverride, Qt::Key_B, Qt::NoModifier, QStringLiteral("b"));
+        QApplication::sendEvent(&canvas, &so);
+        CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
+    }
+
     // ---------- MOVE TOOL: RESIZING THE SELECTED PIXELS ----------
     printf("\n--- Move tool: resize selected pixels ---\n");
     {

@@ -67,6 +67,7 @@ signals:
     void selectionContextMenuRequested(const QPoint &globalPos);
 
 protected:
+    bool event(QEvent *event) override;   // claim ShortcutOverride while a tool types
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;

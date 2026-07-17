@@ -908,7 +908,10 @@ QAction *MainWindow::addShortcutAction(const QString &text, const QList<QKeySequ
 bool MainWindow::allowSingleKeyShortcuts() const {
     QWidget *focus = QApplication::focusWidget();
     if (!focus) return true;
-    if (focus == m_canvas && m_currentTool && m_currentTool->type() == ToolType::Text) return false;
+    // Suppress letter shortcuts only while a tool is actually capturing keystrokes
+    // (the Text tool mid-typing), not merely because it is selected — otherwise B
+    // could never switch away from an idle Text tool.
+    if (focus == m_canvas && m_currentTool && m_currentTool->wantsKeyInput()) return false;
     return !focus->inherits("QLineEdit")
         && !focus->inherits("QTextEdit")
         && !focus->inherits("QPlainTextEdit")

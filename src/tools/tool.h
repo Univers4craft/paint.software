@@ -47,6 +47,12 @@ public:
     virtual void mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) = 0;
     virtual void keyPressEvent(QKeyEvent *event, CanvasWidget &canvas) { Q_UNUSED(event); Q_UNUSED(canvas); }
     virtual void keyReleaseEvent(QKeyEvent *event, CanvasWidget &canvas) { Q_UNUSED(event); Q_UNUSED(canvas); }
+
+    // True while the tool is capturing raw keystrokes (the Text tool typing).
+    // The canvas uses this to claim ShortcutOverride, so letters that are also
+    // tool shortcuts (B, E, S…) reach the tool as text instead of being eaten by
+    // the shortcut system and dropped — that was ~60% of the alphabet.
+    virtual bool wantsKeyInput() const { return false; }
     virtual void drawOverlay(QPainter &painter, const CanvasWidget &canvas) { Q_UNUSED(painter); Q_UNUSED(canvas); }
 
     // Tool options

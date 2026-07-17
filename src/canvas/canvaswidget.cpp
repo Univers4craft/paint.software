@@ -5,9 +5,26 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
+#include <QEvent>
 #include <QTabletEvent>
 #include <QSettings>
 #include <cmath>
+
+bool CanvasWidget::event(QEvent *event)
+{
+    // Qt matches single-key shortcuts (B, E, S…) before the key reaches
+    // keyPressEvent, so while the Text tool is typing those letters would trigger
+    // a tool switch and never be typed — ~60% of the alphabet vanished. Accepting
+    // ShortcutOverride tells Qt to deliver the key as a normal press instead.
+    if (event->type() == QEvent::ShortcutOverride && m_currentTool && m_currentTool->wantsKeyInput()) {
+        auto *ke = static_cast<QKeyEvent *>(event);
+        if (!(ke->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
+            event->accept();
+            return true;
+        }
+    }
+    return QWidget::event(event);
+}
 
 CanvasWidget::CanvasWidget(QWidget *parent)
     : QWidget(parent)

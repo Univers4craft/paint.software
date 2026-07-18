@@ -98,7 +98,10 @@ void Document::setEditAllLayers(bool editAllLayers) {
 int Document::addLayer(const QString &name) {
     QString layerName = name.isEmpty() ? QString("Layer %1").arg(m_layers.size() + 1) : name;
     auto layer = std::make_shared<Layer>(m_width, m_height, layerName);
-    layer->clear(Qt::white);   // new layers start white (not transparent)
+    // New layers are transparent (the Layer ctor already fills transparent), so
+    // the artwork on layers below shows through. Filling white here made every
+    // added layer opaque and hid everything under it (issue #3). Only the initial
+    // Background layer is white.
     int index = m_activeLayer + 1;
     m_layers.insert(m_layers.begin() + index, layer);
 

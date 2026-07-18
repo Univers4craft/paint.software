@@ -1023,6 +1023,24 @@ int main(int argc, char **argv) {
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
     }
 
+    // ---------- NEW LAYERS ARE TRANSPARENT ----------
+    printf("\n--- New layers are transparent ---\n");
+    {
+        Document doc(20, 20);
+        // The initial Background layer is white/opaque — that must not change.
+        CHECK(doc.layerAt(0)->image().pixelColor(5, 5) == QColor(Qt::white),
+              "the Background layer starts white");
+        // Draw on it, add a layer: the new layer must be transparent so the
+        // artwork below shows through (issue #3 — added layers were opaque white).
+        { QPainter p(&doc.layerAt(0)->image()); p.fillRect(0, 0, 20, 20, Qt::red); }
+        const int idx = doc.addLayer("Layer 2");
+        CHECK(doc.layerAt(idx)->image().pixelColor(10, 10).alpha() == 0,
+              "an added layer is fully transparent");
+        const QColor flat = doc.flatten().convertToFormat(QImage::Format_ARGB32).pixelColor(10, 10);
+        CHECK(flat.red() > 200 && flat.green() < 60,
+              "artwork on a lower layer shows through a new layer");
+    }
+
     // ---------- LAYER MOVE / FLIP / IMPORT ----------
     printf("\n--- Layer move / flip / import ---\n");
     {

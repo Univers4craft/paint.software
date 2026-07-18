@@ -12,7 +12,7 @@ permissions:
   contents: write   # attach the bundle to the Release
 
 jobs:
-  flatpak:
+  build:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.7
@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Build the Flatpak bundle
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
@@ -29,9 +27,32 @@ jobs:
           bundle: paint.software.flatpak
           manifest-path: packaging/io.github.univers4craft.PaintSoftware.yml
           cache-key: flatpak-builder-${{ github.sha }}
+          upload-artifact: false
+
+      - name: Upload the bundle as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-bundle
+          path: paint.software.flatpak
+
+  # Attaching runs on the normal runner, not the SDK container: it has git and gh,
+  # and no "dubious ownership" issue (the runner user owns the checkout).
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # full history for the version (commit count)
+
+      - name: Download the bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: flatpak-bundle
 
       - name: Attach the bundle to the release
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -211,6 +211,9 @@ set_target_properties(sample_sepia_plugin PROPERTIES
 
 # ---- Desktop integration (installed by the package) ----
 install(FILES packaging/paint.software.desktop DESTINATION share/applications)
+# AppStream metadata, so software centres and the AppImage describe the app.
+install(FILES packaging/io.github.univers4craft.PaintSoftware.metainfo.xml
+        DESTINATION share/metainfo)
 install(FILES src/resources/paintdali-logo.png
         DESTINATION share/pixmaps RENAME paint.software.png)
 # Ship the sample plugin as a system plugin so a fresh install has a working example

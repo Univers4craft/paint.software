@@ -1,0 +1,81 @@
+name: AppImage
+
+# Builds a portable AppImage that runs on any Linux distribution — download,
+# chmod +x, run. Attached to the same per-version release as the .deb.
+on:
+  push:
+    branches: [ main ]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # attach the AppImage to the Release
+
+jobs:
+  appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # full history so the version (commit count) is real
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build qt6-base-dev libgl1-mesa-dev \
+            libfuse2 file wget desktop-file-utils
+
+      - name: Build and install into an AppDir
+        run: |
+          MM=$(grep -oP 'project\(PaintDali VERSION \K[0-9]+\.[0-9]+' CMakeLists.txt)
+          VER="${MM}.$(git rev-list --count HEAD)"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DPAINTSW_VERSION="$VER" -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build -j
+          DESTDIR="$PWD/AppDir" cmake --install build
+
+      - name: Fetch linuxdeploy + Qt plugin
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+      - name: Build the AppImage
+        env:
+          QMAKE: /usr/bin/qmake6
+          EXTRA_QT_MODULES: printsupport
+          OUTPUT: paint.software-${{ env.VER }}-x86_64.AppImage
+        run: |
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir \
+            --desktop-file AppDir/usr/share/applications/paint.software.desktop \
+            --icon-file AppDir/usr/share/pixmaps/paint.software.png \
+            --plugin qt --output appimage
+          ls -1 *.AppImage
+
+      - name: Attach the AppImage to the release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILE=$(ls paint.software-*-x86_64.AppImage | head -1)
+          TAG="v${VER}"
+          # apt-repo.yml creates the release; give it a moment, then attach.
+          for i in $(seq 1 30); do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release upload "$TAG" "$FILE" --clobber
+              echo "Uploaded $FILE to $TAG"
+              exit 0
+            fi
+            echo "Waiting for release $TAG… ($i)"
+            sleep 10
+          done
+          echo "Release $TAG never appeared; leaving the AppImage as a build artifact."
+
+      - name: Upload as a workflow artifact too
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: paint.software-*-x86_64.AppImage

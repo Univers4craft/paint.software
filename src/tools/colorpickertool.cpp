@@ -18,7 +18,7 @@ void ColorPickerTool::pickColor(const QPointF &canvasPos, QMouseEvent *event, Ca
     if (!doc) return;
 
     QImage flat = doc->flattenVisible();
-    QPoint pos = canvasPos.toPoint();
+    QPoint pos = toPixelPos(canvasPos);
     if (pos.x() < 0 || pos.y() < 0 || pos.x() >= flat.width() || pos.y() >= flat.height()) return;
 
     QColor color = flat.pixelColor(pos);

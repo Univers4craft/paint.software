@@ -68,7 +68,7 @@ void MoveTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWid
         return;
     }
 
-    const QPoint delta = (canvasPos - m_startPos).toPoint();
+    const QPoint delta = toPixelPos(canvasPos - m_startPos);
 
     if (m_movingSelection) {
         // Recompose the layer = hole + floating pixels shifted by delta.

@@ -25,7 +25,7 @@ void SelectionTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *eve
     auto *doc = canvas.document();
     if (!doc) return;
 
-    QRect rect = QRect(m_startPos.toPoint(), m_currentPos.toPoint()).normalized();
+    QRect rect = QRect(toPixelPos(m_startPos), toPixelPos(m_currentPos)).normalized();
     if (rect.width() < 2 && rect.height() < 2) {
         doc->selection().clear();
     } else {

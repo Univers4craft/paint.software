@@ -14,7 +14,7 @@ void FillTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, Can
     auto *layer = doc->activeLayer();
     if (!layer || layer->isLocked()) return;
 
-    QPoint pos = canvasPos.toPoint();
+    QPoint pos = toPixelPos(canvasPos);
     if (pos.x() < 0 || pos.y() < 0 || pos.x() >= layer->width() || pos.y() >= layer->height()) return;
     if (!selectionAllows(doc, pos.x(), pos.y())) return;
 

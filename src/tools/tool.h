@@ -12,6 +12,12 @@ class CanvasWidget;
 class Document;
 class QImage;
 
+#include <cmath>
+
+inline QPoint toPixelPos(const QPointF &pos) {
+    return QPoint(std::floor(pos.x()), std::floor(pos.y()));
+}
+
 enum class ToolType {
     Brush,
     Eraser,

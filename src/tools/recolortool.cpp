@@ -15,7 +15,7 @@ void RecolorTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, 
 
     // Sample the colour under the initial click as the recolor target; paint in
     // the primary colour (right button would swap, handled by caller mapping).
-    QPoint c = canvasPos.toPoint();
+    QPoint c = toPixelPos(canvasPos);
     QImage &img = layer->image();
     m_targetColor = img.rect().contains(c) ? img.pixelColor(c) : canvas.document()->secondaryColor();
     m_replaceColor = canvas.document()->primaryColor();
@@ -43,7 +43,7 @@ void RecolorTool::recolorAt(const QPointF &pos, CanvasWidget &canvas) {
     const QColor primary = m_replaceColor;
     int radius = m_brushSize / 2;
     int tol = m_tolerance;
-    QPoint center = pos.toPoint();
+    QPoint center = toPixelPos(pos);
 
     for (int dy = -radius; dy <= radius; ++dy) {
         for (int dx = -radius; dx <= radius; ++dx) {

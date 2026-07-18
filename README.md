@@ -73,6 +73,26 @@ sudo apt install ./paint.software_*_amd64.deb
 Either way it installs the `paintdotnet` command, a desktop launcher, and a bundled sample plugin.
 *(Maintainers: the repository signing setup is documented in [SIGNING.md](SIGNING.md).)*
 
+### 📦 Install (any distribution — Fedora, Arch, openSUSE…)
+
+Not on a Debian-family system? Every release also ships a portable **AppImage** —
+download, make it executable, run. No installation, no root, works everywhere:
+
+```bash
+# From the Releases page, grab paint.software-*-x86_64.AppImage, then:
+chmod +x paint.software-*-x86_64.AppImage
+./paint.software-*-x86_64.AppImage
+```
+
+A **Flatpak** bundle (`paint.software.flatpak`) is attached to releases too:
+
+```bash
+flatpak install --user paint.software.flatpak
+flatpak run io.github.univers4craft.PaintSoftware
+```
+
+Or [build from source](#-build-from-source) — it works on any distribution.
+
 ### 🛠️ Build from source
 Requirements: a C++17 compiler, **CMake ≥ 3.16**, and **Qt 6** (Widgets, Gui, Core, PrintSupport).
 
@@ -187,6 +207,27 @@ sudo apt install ./paint.software_*_amd64.deb
 ```
 Dans les deux cas : commande `paintdotnet`, lanceur dans le menu, et un plugin d'exemple.
 *(Mainteneurs : la configuration de signature du dépôt est documentée dans [SIGNING.md](SIGNING.md).)*
+
+### 📦 Installer (toute distribution — Fedora, Arch, openSUSE…)
+
+Pas sur un système de la famille Debian ? Chaque version fournit aussi un **AppImage**
+portable — téléchargez, rendez-le exécutable, lancez. Aucune installation, pas de root,
+fonctionne partout :
+
+```bash
+# Depuis la page Releases, récupérez paint.software-*-x86_64.AppImage, puis :
+chmod +x paint.software-*-x86_64.AppImage
+./paint.software-*-x86_64.AppImage
+```
+
+Un bundle **Flatpak** (`paint.software.flatpak`) est aussi joint aux versions :
+
+```bash
+flatpak install --user paint.software.flatpak
+flatpak run io.github.univers4craft.PaintSoftware
+```
+
+Ou [compilez depuis les sources](#-compiler-depuis-les-sources) — ça marche sur toute distribution.
 
 ### 🛠️ Compiler depuis les sources
 Prérequis : un compilateur C++17, **CMake ≥ 3.16** et **Qt 6** (Widgets, Gui, Core, PrintSupport).

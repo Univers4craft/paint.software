@@ -105,13 +105,26 @@ jobs:
               '' \
               '---' \
               '' \
-              '**Install (recommended, auto-updates via APT):**' \
+              '### Debian / Ubuntu / Linux Mint' \
+              '**APT (recommended — auto-updates via `apt upgrade`):**' \
               '```bash' \
               'curl -fsSL https://univers4craft.github.io/paint.software/paint.software.gpg | sudo tee /usr/share/keyrings/paint.software.gpg > /dev/null' \
               'echo "deb [signed-by=/usr/share/keyrings/paint.software.gpg] https://univers4craft.github.io/paint.software stable main" | sudo tee /etc/apt/sources.list.d/paint.software.list' \
               'sudo apt update && sudo apt install paint.software' \
               '```' \
-              'Or download the `.deb` below.'
+              'Or download the `.deb` below and `sudo apt install ./paint.software_*_amd64.deb`.' \
+              '' \
+              '### Any distribution — Fedora, Arch, openSUSE…' \
+              '**AppImage** (portable, no install — download, then):' \
+              '```bash' \
+              'chmod +x paint.software-*-x86_64.AppImage && ./paint.software-*-x86_64.AppImage' \
+              '```' \
+              '**Flatpak** (download `paint.software.flatpak`, then):' \
+              '```bash' \
+              'flatpak install --user paint.software.flatpak' \
+              'flatpak run io.github.univers4craft.PaintSoftware' \
+              '```' \
+              'All three files are attached to this release below.'
           } > /tmp/release-notes.md
 
           # create only — nothing is ever deleted, so past builds stay downloadable.

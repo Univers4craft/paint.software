@@ -8,7 +8,7 @@ void PencilTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, C
     if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
 
     m_drawing = true;
-    m_lastPos = canvasPos.toPoint();
+    m_lastPos = toPixelPos(canvasPos);
     auto *layer = canvas.document()->activeLayer();
     if (layer->isLocked()) { m_drawing = false; return; }
     m_beforeImage = layer->image().copy();
@@ -31,7 +31,7 @@ void PencilTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, Ca
         ? canvas.document()->primaryColor()
         : canvas.document()->secondaryColor();
 
-    QPoint pos = canvasPos.toPoint();
+    QPoint pos = toPixelPos(canvasPos);
     // Bresenham line for 1px aliased drawing
     int x0 = m_lastPos.x(), y0 = m_lastPos.y();
     int x1 = pos.x(), y1 = pos.y();

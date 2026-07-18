@@ -7,7 +7,7 @@ void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event
     auto *doc = canvas.document();
     if (!doc) return;
 
-    QPoint pos = canvasPos.toPoint();
+    QPoint pos = toPixelPos(canvasPos);
     QImage image = doc->flattenVisible();
     if (!image.valid(pos)) return;
 

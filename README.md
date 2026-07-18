@@ -80,13 +80,28 @@ Requirements: a C++17 compiler, **CMake ≥ 3.16**, and **Qt 6** (Widgets, Gui, 
 # Debian / Ubuntu / Linux Mint
 sudo apt install build-essential cmake qt6-base-dev libgl1-mesa-dev
 
-# Configure & build
+# Fedora
+sudo dnf install gcc-c++ cmake qt6-qtbase-devel mesa-libGL-devel
+
+# Arch / Manjaro
+sudo pacman -S base-devel cmake qt6-base
+
+# Other distros: install a C++ compiler, CMake, and the Qt 6 base
+# development package (it provides Widgets, Gui, Core and PrintSupport).
+
+# Then, on any distro:
+git clone https://github.com/Univers4craft/paint.software.git
+cd paint.software
 cmake -B build
 cmake --build build -j
 
 # Run
 ./build/paintdotnet
 ```
+
+Building from source works on **any** Linux distribution — the `.deb` and APT
+repository are just a convenience for Debian-family systems. On Fedora, Arch,
+openSUSE and others, build with the commands above.
 
 Run the headless test suite:
 ```bash
@@ -180,13 +195,28 @@ Prérequis : un compilateur C++17, **CMake ≥ 3.16** et **Qt 6** (Widgets, Gui,
 # Debian / Ubuntu / Linux Mint
 sudo apt install build-essential cmake qt6-base-dev libgl1-mesa-dev
 
-# Configurer & compiler
+# Fedora
+sudo dnf install gcc-c++ cmake qt6-qtbase-devel mesa-libGL-devel
+
+# Arch / Manjaro
+sudo pacman -S base-devel cmake qt6-base
+
+# Autres distributions : installez un compilateur C++, CMake et le paquet
+# de développement Qt 6 « base » (il fournit Widgets, Gui, Core et PrintSupport).
+
+# Puis, sur n'importe quelle distribution :
+git clone https://github.com/Univers4craft/paint.software.git
+cd paint.software
 cmake -B build
 cmake --build build -j
 
 # Lancer
 ./build/paintdotnet
 ```
+
+La compilation depuis les sources fonctionne sur **toute** distribution Linux — le
+`.deb` et le dépôt APT ne sont qu'un confort pour les systèmes de la famille Debian.
+Sur Fedora, Arch, openSUSE et autres, compilez avec les commandes ci-dessus.
 
 Lancer les tests (sans interface) :
 ```bash

@@ -1,0 +1,38 @@
+# Maintainer: Univers4craft <Univers4craft@users.noreply.github.com>
+pkgname=paint.software-git
+_srcname=paint.software
+pkgver=r1
+pkgrel=1
+pkgdesc="Open-source Paint.NET clone for Linux (C++/Qt6) — layers, effects, plugins"
+arch=('x86_64')
+url="https://github.com/Univers4craft/paint.software"
+license=('MIT')
+depends=('qt6-base' 'hicolor-icon-theme')
+optdepends=('qt6-translations: French UI and translated dialog buttons')
+makedepends=('cmake' 'ninja' 'git' 'qt6-base')
+provides=('paint.software')
+conflicts=('paint.software')
+source=("git+https://github.com/Univers4craft/paint.software.git")
+sha256sums=('SKIP')
+
+# VCS package: the version tracks main automatically, matching the project's
+# continuous release model (r<commit-count>.<short-hash>).
+pkgver() {
+  cd "$srcdir/$_srcname"
+  printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cd "$srcdir/$_srcname"
+  cmake -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DPAINTSW_VERSION="$(git rev-list --count HEAD | sed 's/^/1.1./')"
+  cmake --build build
+}
+
+package() {
+  cd "$srcdir/$_srcname"
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

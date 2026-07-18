@@ -1,0 +1,20 @@
+pkgbase = paint.software-git
+	pkgdesc = Open-source Paint.NET clone for Linux (C++/Qt6) — layers, effects, plugins
+	pkgver = r1
+	pkgrel = 1
+	url = https://github.com/Univers4craft/paint.software
+	arch = x86_64
+	license = MIT
+	makedepends = cmake
+	makedepends = ninja
+	makedepends = git
+	makedepends = qt6-base
+	depends = qt6-base
+	depends = hicolor-icon-theme
+	optdepends = qt6-translations: French UI and translated dialog buttons
+	provides = paint.software
+	conflicts = paint.software
+	source = git+https://github.com/Univers4craft/paint.software.git
+	sha256sums = SKIP
+
+pkgname = paint.software-git

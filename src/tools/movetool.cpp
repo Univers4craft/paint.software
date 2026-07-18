@@ -68,7 +68,9 @@ void MoveTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWid
         return;
     }
 
-    const QPoint delta = toPixelPos(canvasPos - m_startPos);
+    // A movement delta, not an absolute position: round to nearest, not floor.
+    // floor biases sub-pixel drags (a -0.001px nudge would jump a whole pixel up/left).
+    const QPoint delta = (canvasPos - m_startPos).toPoint();
 
     if (m_movingSelection) {
         // Recompose the layer = hole + floating pixels shifted by delta.

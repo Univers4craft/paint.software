@@ -42,7 +42,8 @@ void MoveSelectionTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *ev
     if (m_moving && (event->buttons() & Qt::LeftButton)) {
         Document *doc = canvas.document();
         if (!doc) return;
-        QPoint delta = toPixelPos(canvasPos - m_lastPos);
+        // A movement delta, not an absolute position: round to nearest, not floor.
+        QPoint delta = (canvasPos - m_lastPos).toPoint();
         if (!delta.isNull()) {
             doc->selection().translate(delta);
             m_lastPos = canvasPos;

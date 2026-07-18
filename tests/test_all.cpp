@@ -1023,6 +1023,42 @@ int main(int argc, char **argv) {
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
     }
 
+    // ---------- PIXEL COORDINATE CONVERSION ----------
+    printf("\n--- Pixel coordinate conversion ---\n");
+    {
+        // toPixelPos floors: the pixel under x=5.7 is pixel 5 (it spans [5,6)),
+        // not 6 as QPointF::toPoint() (round-to-nearest) would give. This was the
+        // Pencil off-by-one in pixel art (PR #5).
+        CHECK(toPixelPos(QPointF(5.7, 5.7)) == QPoint(5, 5), "toPixelPos floors 5.7 to 5");
+        CHECK(toPixelPos(QPointF(5.2, 5.9)) == QPoint(5, 5), "toPixelPos floors within a pixel");
+        CHECK(toPixelPos(QPointF(0.0, 0.0)) == QPoint(0, 0), "toPixelPos of an exact edge");
+        CHECK(toPixelPos(QPointF(-0.3, -0.3)) == QPoint(-1, -1), "toPixelPos floors negatives");
+
+        // The Pencil now marks the pixel actually under the cursor.
+        Document doc(10, 10);
+        doc.activeLayer()->clear(Qt::white);
+        doc.setPrimaryColor(Qt::black);
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+        PencilTool pencil;
+        // A single click at (3.7, 4.2): pixel (3, 4) must be the one painted.
+        QMouseEvent press(QEvent::MouseButtonPress, QPointF(3.7, 4.2), QPointF(3.7, 4.2),
+                          Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        pencil.mousePressEvent(QPointF(3.7, 4.2), &press, canvas);
+        QMouseEvent rel(QEvent::MouseButtonRelease, QPointF(3.7, 4.2), QPointF(3.7, 4.2),
+                        Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        pencil.mouseReleaseEvent(QPointF(3.7, 4.2), &rel, canvas);
+        CHECK(doc.activeLayer()->image().pixelColor(3, 4) == QColor(Qt::black),
+              "Pencil paints the pixel under the cursor, not the rounded one");
+        CHECK(doc.activeLayer()->image().pixelColor(4, 4) != QColor(Qt::black),
+              "Pencil does not paint the neighbouring (rounded) pixel");
+
+        // A movement delta must stay round-to-nearest, not floor: a sub-pixel
+        // nudge shouldn't jump a whole pixel (that would drift the Move tools).
+        CHECK((QPointF(-0.001, -0.001)).toPoint() == QPoint(0, 0),
+              "a tiny negative drag delta stays at zero (round, not floor)");
+    }
+
     // ---------- NEW LAYERS ARE TRANSPARENT ----------
     printf("\n--- New layers are transparent ---\n");
     {

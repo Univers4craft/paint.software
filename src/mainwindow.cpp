@@ -541,7 +541,7 @@ void MainWindow::createMenus() {
     setShortcuts(blackWhiteAction, {QKeySequence("Ctrl+Shift+G")});
 
     // Menu Effets
-    auto *fxMenu = menuBar()->addMenu(TR("E&ffets"));
+    auto *fxMenu = menuBar()->addMenu(TR("&Effets"));
 
     m_repeatEffectAction = fxMenu->addAction(TR("Répéter le dernier effet"), this, [this]() {
         if (m_lastEffect) m_lastEffect();

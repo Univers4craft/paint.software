@@ -6,7 +6,8 @@ QImage VignetteEffect::apply(const QImage &input) {
     QImage result = img.copy();
     int w = img.width(), h = img.height();
     double cx = w / 2.0, cy = h / 2.0;
-    double maxR = std::sqrt(cx * cx + cy * cy);
+    // dx/dy below are normalised by cx/cy, so the corner distance is sqrt(2)
+    // (the 1.414 further down) rather than the pixel radius.
     double radius = m_radius / 100.0;
     double strength = m_amount / 100.0;
 

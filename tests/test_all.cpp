@@ -986,7 +986,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- TEXT TOOL SWALLOWS ITS OWN KEYS ----------
-    printf("\n--- Text tool captures shortcut letters ---\n");
+    SECTION("Text tool captures shortcut letters");
     {
         // ~60% of the alphabet are also tool shortcuts (b, e, s, t, z…). Qt matches
         // those before keyPressEvent, so typing dropped them. The canvas claims
@@ -1028,7 +1028,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- COLORS PANEL: More >> / << Less COLLAPSES BACK ----------
-    printf("\n--- Colors panel More/Less ---\n");
+    SECTION("Colors panel More/Less");
     {
         // "<< Less" hid the sliders but left the panel at its expanded height,
         // and it could not be shrunk back by hand (issue #9). Check both the
@@ -1078,7 +1078,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- DOCK PANELS NEVER GET WRAPPED IN A GROUP WINDOW ----------
-    printf("\n--- Dock options ---\n");
+    SECTION("Dock options");
     {
         // QMainWindow::GroupedDragging makes Qt wrap dragged panels in a private
         // QDockWidgetGroupWindow. That wrapper inherits the main window's title,
@@ -1103,7 +1103,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- COLOUR SLIDER LABELS ARE TRANSLATED ----------
-    printf("\n--- Colour slider labels ---\n");
+    SECTION("Colour slider labels");
     {
         // The letters are French initials in the source: V = Vert (green) and
         // T = Teinte (hue). Left untranslated they read as wrong channels in
@@ -1133,8 +1133,48 @@ int main(int argc, char **argv) {
         printf("    (en: %s | fr: %s)\n", qPrintable(en.join(' ')), qPrintable(fr.join(' ')));
     }
 
+    // ---------- MENU BAR ACCELERATORS ARE UNIQUE IN BOTH LANGUAGES ----------
+    SECTION("Menu accelerators");
+    {
+        // Alt+letter accelerators are case-insensitive, so two menus claiming the
+        // same letter do not open — Qt just cycles between them. French used to
+        // have "&Fichier" and "E&ffets" both on Alt+F. Translating a menu title
+        // moves its accelerator, so this has to hold in every language.
+        // Keep this list in step with createMenus().
+        const QStringList sourceTitles = {
+            "&Fichier", "É&dition", "&Affichage", "&Image",
+            "&Calques", "A&justements", "&Effets", "&Options",
+        };
+
+        auto collisionFor = [&sourceTitles](I18n::Lang lang) {
+            I18n::setLanguage(lang);
+            QHash<QChar, QString> taken;
+            QString clash;
+            for (const QString &src : sourceTitles) {
+                const QString title = I18n::t(src);
+                const int amp = title.indexOf('&');
+                if (amp < 0 || amp + 1 >= title.size()) continue;
+                const QChar key = title.at(amp + 1).toLower();
+                if (taken.contains(key))
+                    clash += QStringLiteral("%1 vs %2 on Alt+%3; ")
+                                 .arg(taken.value(key), title, QString(key.toUpper()));
+                else
+                    taken.insert(key, title);
+            }
+            return clash;
+        };
+
+        const QString frClash = collisionFor(I18n::Lang::French);
+        const QString enClash = collisionFor(I18n::Lang::English);
+        CHECK(frClash.isEmpty(), "no duplicate menu accelerators in French");
+        CHECK(enClash.isEmpty(), "no duplicate menu accelerators in English");
+        if (!frClash.isEmpty()) printf("    (fr: %s)\n", qPrintable(frClash));
+        if (!enClash.isEmpty()) printf("    (en: %s)\n", qPrintable(enClash));
+        I18n::setLanguage(I18n::Lang::English);
+    }
+
     // ---------- PIXEL COORDINATE CONVERSION ----------
-    printf("\n--- Pixel coordinate conversion ---\n");
+    SECTION("Pixel coordinate conversion");
     {
         // toPixelPos floors: the pixel under x=5.7 is pixel 5 (it spans [5,6)),
         // not 6 as QPointF::toPoint() (round-to-nearest) would give. This was the
@@ -1170,7 +1210,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- NEW LAYERS ARE TRANSPARENT ----------
-    printf("\n--- New layers are transparent ---\n");
+    SECTION("New layers are transparent");
     {
         Document doc(20, 20);
         // The initial Background layer is white/opaque — that must not change.
@@ -1188,7 +1228,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- LAYER MOVE / FLIP / IMPORT ----------
-    printf("\n--- Layer move / flip / import ---\n");
+    SECTION("Layer move / flip / import");
     {
         {   // move reorders the stack
             Document doc(20, 20);
@@ -1226,7 +1266,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- SELECTION MODES + GROW/SHRINK/FEATHER ----------
-    printf("\n--- Selection modes and modify ---\n");
+    SECTION("Selection modes and modify");
     {
         auto area = [](const Selection &s, int w, int h) {
             long n = 0;
@@ -1262,7 +1302,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- FILL SELECTION ----------
-    printf("\n--- Fill selection ---\n");
+    SECTION("Fill selection");
     {
         auto fillMasked = [](Document &doc) {
             // Mirror MainWindow::fillSelection's masked path.
@@ -1300,7 +1340,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- PASTE TEXT INTO THE TEXT TOOL ----------
-    printf("\n--- Text tool: paste ---\n");
+    SECTION("Text tool: paste");
     {
         auto inkWidth = [](const QImage &img) {
             int x0 = INT_MAX, x1 = -1;
@@ -1359,7 +1399,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- MOVE TOOL: RESIZING THE SELECTED PIXELS ----------
-    printf("\n--- Move tool: resize selected pixels ---\n");
+    SECTION("Move tool: resize selected pixels");
     {
         // Dragging a handle must stretch or squash the artwork itself, like
         // paint.net's Move Selected Pixels. The tool had no handles at all, so
@@ -1410,7 +1450,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- UNDO/REDO OF A PIXEL RESIZE ----------
-    printf("\n--- Move tool: undo/redo a resize ---\n");
+    SECTION("Move tool: undo/redo a resize");
     {
         Document doc(200, 200);
         doc.activeLayer()->clear(Qt::white);
@@ -1454,7 +1494,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- MOVE TOOL TARGETS THE ACTIVE LAYER ----------
-    printf("\n--- Move tool acts on the selected layer ---\n");
+    SECTION("Move tool acts on the selected layer");
     {
         // The selection is document-wide, so it can be drawn while one layer is
         // active and then used after switching to another. Whatever is on screen,
@@ -1525,7 +1565,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- MOVE SELECTION TOOL ----------
-    printf("\n--- Move Selection tool ---\n");
+    SECTION("Move Selection tool");
     {
         auto dragSelection = [](QRect sel, QPointF from, QPoint delta, double zoom) {
             Document doc(200, 200);
@@ -1572,7 +1612,7 @@ int main(int argc, char **argv) {
     }
 
     // ---------- CANVAS VIEW CENTRING ----------
-    printf("\n--- Canvas view centring ---\n");
+    SECTION("Canvas view centring");
     {
         Document doc(800, 600);
         CanvasWidget canvas;

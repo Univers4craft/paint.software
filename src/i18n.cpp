@@ -22,7 +22,7 @@ const QHash<QString, QString> &table() {
         {"&Image", "&Image"},
         {"&Calques", "&Layers"},
         {"A&justements", "&Adjustments"},
-        {"E&ffets", "Effe&cts"},
+        {"&Effets", "Effe&cts"},
         {"&Options", "&Options"},
 
         // ---- File menu ----

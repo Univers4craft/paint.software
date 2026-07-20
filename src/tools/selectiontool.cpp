@@ -5,7 +5,7 @@
 
 SelectionTool::SelectionTool(SelectionShape shape) : m_shape(shape) {}
 
-void SelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
+void SelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &) {
     if (event->button() != Qt::LeftButton) return;
     m_selecting = true;
     m_startPos = canvasPos;

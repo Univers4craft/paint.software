@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <functional>
 #include <climits>
+#include <tuple>
 
 #include "core/document.h"
 #include "core/layer.h"
@@ -37,6 +38,9 @@
 #include "tools/colorpickertool.h"
 #include "tools/lassotool.h"
 #include "panels/colorspanel.h"
+#include <QPushButton>
+#include <QDockWidget>
+#include <QMainWindow>
 #include <QKeyEvent>
 
 #include "effects/blureffect.h"
@@ -1021,6 +1025,56 @@ int main(int argc, char **argv) {
         QKeyEvent so(QEvent::ShortcutOverride, Qt::Key_B, Qt::NoModifier, QStringLiteral("b"));
         QApplication::sendEvent(&canvas, &so);
         CHECK(!so.isAccepted(), "letters are shortcuts again once editing stops");
+    }
+
+    // ---------- COLORS PANEL: More >> / << Less COLLAPSES BACK ----------
+    printf("\n--- Colors panel More/Less ---\n");
+    {
+        // "<< Less" hid the sliders but left the panel at its expanded height,
+        // and it could not be shrunk back by hand (issue #9). Check both the
+        // docked and the floating case, since they resize through different APIs.
+        auto roundTrip = [](bool floating) {
+            QMainWindow mw;
+            Document doc(64, 64);
+            auto *panel = new ColorsPanel;
+            panel->setDocument(&doc);
+            auto *dock = new QDockWidget("Colors", &mw);
+            dock->setWidget(panel);
+            mw.addDockWidget(Qt::LeftDockWidgetArea, dock);
+            if (floating) { dock->setFloating(true); dock->resize(230, 343); }
+            mw.resize(900, 700);
+            mw.show();
+            QCoreApplication::processEvents();
+
+            QPushButton *more = nullptr;
+            for (auto *b : panel->findChildren<QPushButton *>())
+                if (b->text().contains("Plus") || b->text().contains("More")) { more = b; break; }
+            if (!more) return std::make_tuple(0, 0, 0);
+
+            auto settle = [&] {
+                QCoreApplication::processEvents();
+                QCoreApplication::sendPostedEvents();
+                QCoreApplication::processEvents();
+                return panel->sizeHint().height();
+            };
+            const int before = settle();
+            more->click();
+            const int expanded = settle();
+            more->click();
+            const int after = settle();
+            return std::make_tuple(before, expanded, after);
+        };
+
+        for (bool floating : {false, true}) {
+            const auto [before, expanded, after] = roundTrip(floating);
+            const char *what = floating ? "floating" : "docked";
+            CHECK(expanded > before + 50,
+                  floating ? "More >> expands the floating panel" : "More >> expands the docked panel");
+            CHECK(after <= before + 5,
+                  floating ? "<< Less collapses the floating panel back"
+                           : "<< Less collapses the docked panel back");
+            printf("    (%s: %d -> %d -> %d)\n", what, before, expanded, after);
+        }
     }
 
     // ---------- PIXEL COORDINATE CONVERSION ----------

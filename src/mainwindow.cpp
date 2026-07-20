@@ -708,7 +708,10 @@ void MainWindow::showShortcutsHelp() {
 }
 
 void MainWindow::applyTheme() {
-    setStyleSheet(Theme::styleSheet());
+    // Application-wide, not just this window: file dialogs and other pop-ups are
+    // separate top-level widgets, and with only the main window styled their item
+    // views kept a white background under light text (issue #7).
+    qApp->setStyleSheet(Theme::styleSheet());
     if (m_canvas) {
         m_canvas->setBackdropColor(QColor(Theme::canvasBackdrop()));
         m_canvas->update();
@@ -1710,7 +1713,7 @@ void MainWindow::newDocument() {
 }
 
 void MainWindow::openDocument() {
-    QStringList files = QFileDialog::getOpenFileNames(this, "Ouvrir une image",
+    QStringList files = QFileDialog::getOpenFileNames(this, TR("Ouvrir une image"),
         QString(), "Tous les formats pris en charge (*.psw *.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;"
                    "paint.software (calques) (*.psw);;"
                    "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;All Files (*)");
@@ -1871,7 +1874,7 @@ bool MainWindow::saveDocument() {
 
 bool MainWindow::saveDocumentAs() {
     QString selectedFilter;
-    QString filePath = QFileDialog::getSaveFileName(this, "Enregistrer l'image",
+    QString filePath = QFileDialog::getSaveFileName(this, TR("Enregistrer l'image"),
         QString(), "paint.software - garde les calques (*.psw);;PNG (*.png);;JPEG (*.jpg *.jpeg);;"
                    "BMP (*.bmp);;TIFF (*.tiff);;WebP (*.webp);;All Files (*)",
         &selectedFilter);
@@ -1946,7 +1949,7 @@ void MainWindow::paste() {
     }
     QImage img = QApplication::clipboard()->image();
     if (img.isNull()) return;
-    m_document->addLayer(img, "Calque collé");
+    m_document->addLayer(img, TR("Calque collé"));
     m_canvas->updateCanvas();
 }
 

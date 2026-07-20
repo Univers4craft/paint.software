@@ -3,18 +3,62 @@
 #include <QSettings>
 #include <QApplication>
 #include <QPalette>
+#include <QProcess>
 #include <QStyleHints>
 
 namespace {
 
 Theme::Scheme g_scheme = Theme::Scheme::Default;
 
+// Ask the desktop directly. Returns 1 = dark, 0 = light, -1 = no answer.
+// Needed because the Qt palette is not reliable everywhere: inside an AppImage
+// the bundled Qt has no platform theme plugin, so its palette stays light even
+// on a dark desktop, and the app came up light (issue #6).
+int desktopSaysDark() {
+    auto ask = [](const QString &schema, const QString &key) -> QString {
+        QProcess p;
+        p.start(QStringLiteral("gsettings"), {QStringLiteral("get"), schema, key});
+        if (!p.waitForFinished(400)) { p.kill(); return {}; }
+        if (p.exitStatus() != QProcess::NormalExit || p.exitCode() != 0) return {};
+        return QString::fromUtf8(p.readAllStandardOutput()).trimmed();
+    };
+
+    // The freedesktop preference, when the desktop actually sets it.
+    const QString pref = ask(QStringLiteral("org.gnome.desktop.interface"),
+                             QStringLiteral("color-scheme"));
+    if (pref.contains(QStringLiteral("prefer-dark"))) return 1;
+    if (pref.contains(QStringLiteral("prefer-light"))) return 0;
+
+    // Mint/Cinnamon (and others) leave color-scheme at 'default' and express the
+    // choice purely through the GTK theme name, e.g. 'Mint-Y-Dark'.
+    for (const QString &schema : {QStringLiteral("org.cinnamon.desktop.interface"),
+                                  QStringLiteral("org.gnome.desktop.interface"),
+                                  QStringLiteral("org.mate.interface")}) {
+        const QString theme = ask(schema, QStringLiteral("gtk-theme"));
+        if (!theme.isEmpty())
+            return theme.contains(QStringLiteral("dark"), Qt::CaseInsensitive) ? 1 : 0;
+    }
+
+    const QString envTheme = qEnvironmentVariable("GTK_THEME");
+    if (!envTheme.isEmpty())
+        return envTheme.contains(QStringLiteral("dark"), Qt::CaseInsensitive) ? 1 : 0;
+
+    return -1;
+}
+
 bool osPrefersDark() {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    if (auto *hints = QGuiApplication::styleHints())
-        return hints->colorScheme() == Qt::ColorScheme::Dark;
+    if (auto *hints = QGuiApplication::styleHints()) {
+        const Qt::ColorScheme cs = hints->colorScheme();
+        if (cs != Qt::ColorScheme::Unknown) return cs == Qt::ColorScheme::Dark;
+    }
 #endif
-    // Fallback: inspect the palette the platform theme gave us.
+    // Cached: spawning gsettings is cheap but not free, and the desktop's choice
+    // does not change mid-session in practice.
+    static const int fromDesktop = desktopSaysDark();
+    if (fromDesktop >= 0) return fromDesktop == 1;
+
+    // Last resort: the palette the platform theme gave us.
     const QPalette pal = QApplication::palette();
     return pal.color(QPalette::Window).lightness() < 128;
 }
@@ -156,6 +200,20 @@ const char *kDark = R"(
     QListWidget { background-color: #1e1e1e; color: #f0f0f0; border: 1px solid #4a4a4a; }
     QListWidget::item { padding: 2px; }
     QListWidget::item:selected { background-color: #2d6ba3; color: #ffffff; }
+
+    /* File dialogs draw their file list with QTreeView/QListView and a QHeaderView.
+       Those were unstyled, so they kept a white background while the global rule
+       made the text light — white on white, unreadable (issue #7). */
+    QAbstractItemView, QTreeView, QListView, QTableView, QColumnView {
+        background-color: #1e1e1e; alternate-background-color: #232323; color: #f0f0f0;
+        border: 1px solid #4a4a4a; selection-background-color: #2d6ba3; selection-color: #ffffff;
+    }
+    QTreeView::item:hover, QListView::item:hover { background-color: #333333; }
+    QHeaderView::section {
+        background-color: #2b2b2b; color: #f0f0f0;
+        border: 1px solid #4a4a4a; padding: 3px 5px;
+    }
+    QTableCornerButton::section { background-color: #2b2b2b; border: 1px solid #4a4a4a; }
 
     QPushButton { background-color: #3a3a3a; color: #f0f0f0; border: 1px solid #5a5a5a; padding: 3px 7px; border-radius: 3px; font-size: 11px; }
     QPushButton:hover { background-color: #464646; border-color: #6a6a6a; }

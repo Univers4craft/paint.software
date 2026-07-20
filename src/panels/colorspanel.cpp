@@ -2,6 +2,7 @@
 #include "i18n.h"
 #include <QTimer>
 #include <QDockWidget>
+#include <QMainWindow>
 #include "core/document.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -244,7 +245,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
     sliderGrid->setContentsMargins(0, 0, 0, 0);
     sliderGrid->setSpacing(1);
     // RVB header
-    auto *rvbHeader = new QLabel("RVB");
+    auto *rvbHeader = new QLabel(TR("RVB"));
     rvbHeader->setStyleSheet("font-weight: bold; font-size: 10px; color: #555;");
     sliderGrid->addWidget(rvbHeader, 0, 0, 1, 3);
     auto makeSlider = [&](const QString &label, int row, QSlider *&slider, QSpinBox *&spin) {
@@ -280,7 +281,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
     hsvGrid->setSpacing(1);
 
     // HSV header label
-    auto *hsvHeader = new QLabel("TSV");
+    auto *hsvHeader = new QLabel(TR("TSV"));
     hsvHeader->setStyleSheet("font-weight: bold; font-size: 10px; color: #555;");
     hsvGrid->addWidget(hsvHeader, 0, 0, 1, 3);
 
@@ -341,15 +342,31 @@ void ColorsPanel::shrinkToFit() {
     layout()->activate();
     adjustSize();
 
+    updateGeometry();
+
     QWidget *w = parentWidget();
     while (w && !qobject_cast<QDockWidget*>(w))
         w = w->parentWidget();
     auto *dock = qobject_cast<QDockWidget*>(w);
-    if (!dock || !dock->isFloating()) return;
+    if (!dock) return;
 
     // Deferred: let the layout settle before asking for the new size hint.
     QTimer::singleShot(0, dock, [dock]() {
-        dock->resize(dock->width(), dock->sizeHint().height());
+        const int wanted = dock->sizeHint().height();
+        if (dock->isFloating()) {
+            dock->resize(dock->width(), wanted);
+            return;
+        }
+        // Docked: resizing the widget does nothing, the dock area owns its extent.
+        // Only resizeDocks() can shrink it — without this, "<< Less" left the panel
+        // at its expanded height and it could not be shrunk back (issue #9).
+        if (auto *mw = qobject_cast<QMainWindow *>(dock->window())) {
+            mw->resizeDocks({dock}, {wanted}, Qt::Vertical);
+            return;
+        }
+        // Qt wrapped it in a QDockWidgetGroupWindow: resize that window instead.
+        if (QWidget *top = dock->window())
+            top->resize(top->width(), wanted);
     });
 }
 

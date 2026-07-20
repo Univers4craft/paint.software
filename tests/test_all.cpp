@@ -1077,6 +1077,62 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- DOCK PANELS NEVER GET WRAPPED IN A GROUP WINDOW ----------
+    printf("\n--- Dock options ---\n");
+    {
+        // QMainWindow::GroupedDragging makes Qt wrap dragged panels in a private
+        // QDockWidgetGroupWindow. That wrapper inherits the main window's title,
+        // so it shows up as a blank "Untitled - paint.software x.y.z" box, and
+        // destroying one while the layout still points at it crashes the app
+        // (issue #10). It also lies to isFloating(), which is what broke the
+        // Colors panel's collapse when undocked (issue #9). It must stay off.
+        QMainWindow mw;
+        mw.setDockOptions(QMainWindow::AnimatedDocks
+                          | QMainWindow::AllowNestedDocks
+                          | QMainWindow::AllowTabbedDocks);
+        auto *dock = new QDockWidget("Colors", &mw);
+        mw.addDockWidget(Qt::RightDockWidgetArea, dock);
+        dock->setFloating(true);
+        QCoreApplication::processEvents();
+
+        CHECK(!(mw.dockOptions() & QMainWindow::GroupedDragging),
+              "GroupedDragging is off (no blank group windows)");
+        CHECK(dock->isFloating(), "an undocked panel reports isFloating() truthfully");
+        CHECK(qstrcmp(dock->window()->metaObject()->className(), "QDockWidgetGroupWindow") != 0,
+              "an undocked panel is its own window, not a group wrapper");
+    }
+
+    // ---------- COLOUR SLIDER LABELS ARE TRANSLATED ----------
+    printf("\n--- Colour slider labels ---\n");
+    {
+        // The letters are French initials in the source: V = Vert (green) and
+        // T = Teinte (hue). Left untranslated they read as wrong channels in
+        // English, which is what issue #8 was still reporting after the RGB/HSV
+        // headers themselves had been fixed.
+        auto labelsFor = [](I18n::Lang lang) {
+            I18n::setLanguage(lang);
+            Document doc(64, 64);
+            ColorsPanel panel;
+            panel.setDocument(&doc);
+            QStringList out;
+            for (auto *l : panel.findChildren<QLabel *>()) {
+                const QString t = l->text();
+                if (t.size() == 2 && t.endsWith(':')) out << t;
+            }
+            return out;
+        };
+
+        const QStringList en = labelsFor(I18n::Lang::English);
+        CHECK(en.contains("G:"), "English shows G: for green (not V: for Vert)");
+        CHECK(en.contains("H:"), "English shows H: for hue (not T: for Teinte)");
+        CHECK(!en.contains("T:"), "no French T: left in the English sliders");
+
+        const QStringList fr = labelsFor(I18n::Lang::French);
+        CHECK(fr.contains("V:") && fr.contains("T:"), "French keeps V: (Vert) and T: (Teinte)");
+        I18n::setLanguage(I18n::Lang::English);
+        printf("    (en: %s | fr: %s)\n", qPrintable(en.join(' ')), qPrintable(fr.join(' ')));
+    }
+
     // ---------- PIXEL COORDINATE CONVERSION ----------
     printf("\n--- Pixel coordinate conversion ---\n");
     {

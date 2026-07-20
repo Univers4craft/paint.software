@@ -265,10 +265,10 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
         connect(slider, &QSlider::valueChanged, this, &ColorsPanel::onSlidersChanged);
     };
 
-    makeSlider("R:", 1, m_redSlider, m_redSpin);
-    makeSlider("V:", 2, m_greenSlider, m_greenSpin);
-    makeSlider("B:", 3, m_blueSlider, m_blueSpin);
-    makeSlider("A:", 4, m_alphaSlider, m_alphaSpin);
+    makeSlider(TR("R:|rgb"), 1, m_redSlider, m_redSpin);
+    makeSlider(TR("V:|vert"), 2, m_greenSlider, m_greenSpin);
+    makeSlider(TR("B:|rgb"), 3, m_blueSlider, m_blueSpin);
+    makeSlider(TR("A:|alpha"), 4, m_alphaSlider, m_alphaSpin);
     m_alphaSlider->setValue(255);
     // Collapsed by default (paint.net opens with the "More >>" panel closed).
     m_slidersWidget->setVisible(false);
@@ -302,9 +302,9 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
         connect(slider, &QSlider::valueChanged, this, &ColorsPanel::onHsvSlidersChanged);
     };
 
-    makeHsvSlider("T:", 1, 360, m_hueSlider, m_hueSpin);
-    makeHsvSlider("S:", 2, 100, m_satSlider, m_satSpin);
-    makeHsvSlider("V:", 3, 100, m_valSlider, m_valSpin);
+    makeHsvSlider(TR("T:|teinte"), 1, 360, m_hueSlider, m_hueSpin);
+    makeHsvSlider(TR("S:|saturation"), 2, 100, m_satSlider, m_satSpin);
+    makeHsvSlider(TR("V:|valeur"), 3, 100, m_valSlider, m_valSpin);
     m_hsvWidget->setVisible(false);
     layout->addWidget(m_hsvWidget);
 

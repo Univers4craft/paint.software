@@ -138,10 +138,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     resize(1400, 900);
     setMinimumSize(800, 600);
     setDockNestingEnabled(true);
+    // GroupedDragging is deliberately OFF. It makes Qt wrap dragged panels in an
+    // internal QDockWidgetGroupWindow, which inherits this window's title — that
+    // is the blank "Untitled - paint.software x.y.z" box users hit when arranging
+    // Colors/History/Layers, and closing one could take the app down with it.
+    // Without it each panel floats as its own utility window, which is also what
+    // paint.net does, and isFloating() then reports the truth (see
+    // ColorsPanel::shrinkToFit).
     setDockOptions(QMainWindow::AnimatedDocks
                    | QMainWindow::AllowNestedDocks
-                   | QMainWindow::AllowTabbedDocks
-                   | QMainWindow::GroupedDragging);
+                   | QMainWindow::AllowTabbedDocks);
     setAcceptDrops(true);
 
     // Default document (registered as the first entry of the image list)
@@ -245,15 +251,18 @@ void MainWindow::loadUiState() {
         restoreGeometry(QByteArray::fromBase64(geoB64.toLatin1()));
     }
 
-    // v3 layout persistence (bumped when the window layout was reworked to match
-    // paint.net; any older saved state is intentionally ignored).
-    const QString stateB64 = settings.value("ui/mainWindowStateV6").toString();
+    // Versioned layout persistence; any older saved state is intentionally
+    // ignored. V7 exists because a V6 state was written while GroupedDragging
+    // was on and can carry a QDockWidgetGroupWindow back in — restoring one
+    // re-creates the blank title-less window, and tearing it down again crashes
+    // (issue #10). Dropping those layouts once is the cheap, safe cure.
+    const QString stateB64 = settings.value("ui/mainWindowStateV7").toString();
     if (!stateB64.isEmpty()) {
         const QByteArray savedState = QByteArray::fromBase64(stateB64.toLatin1());
         // Block normalizeDockLayout while restoreState repositions docks.
         QScopedValueRollback<bool> restoreGuard(m_restoringState, true);
-        if (!restoreState(savedState, 6)) {
-            settings.remove("ui/mainWindowStateV6");
+        if (!restoreState(savedState, 7)) {
+            settings.remove("ui/mainWindowStateV7");
             settings.remove("ui/mainWindowGeometry");
         }
     }
@@ -285,7 +294,7 @@ void MainWindow::saveUiState() {
 
     // Store as base64 strings to avoid Qt INI format corrupting binary QByteArray data.
     settings.setValue("ui/mainWindowGeometry", QString(saveGeometry().toBase64()));
-    settings.setValue("ui/mainWindowStateV6", QString(saveState(6).toBase64()));
+    settings.setValue("ui/mainWindowStateV7", QString(saveState(7).toBase64()));
 
     if (m_toolsDock) settings.setValue("ui/toolsVisible", m_toolsDock->isVisible());
     if (m_historyDock) settings.setValue("ui/historyVisible", m_historyDock->isVisible());

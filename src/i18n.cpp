@@ -586,6 +586,8 @@ const QHash<QString, QString> &table() {
         {"Rotation :", "Rotation:"},
         {"Saturation :", "Saturation:"},
         {"Seuil :", "Threshold:"},
+        {"Seuil...", "Threshold..."},
+        {"Seuil", "Threshold"},
         {"Couleurs :", "Colors:"},
         {"Fragments :", "Fragments:"},
         {"Luminosité :", "Brightness:"},

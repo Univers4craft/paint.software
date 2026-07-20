@@ -524,6 +524,7 @@ void MainWindow::createMenus() {
     auto *sepiaAction = adjMenu->addAction(TR("Sépia..."), this, [this]() { applyAdjustment(5); });
     auto *posterizeAction = adjMenu->addAction(TR("Postériser..."), this, [this]() { applyAdjustment(6); });
     auto *blackWhiteAction = adjMenu->addAction(TR("Noir et blanc"), this, [this]() { applyAdjustment(7); });
+    adjMenu->addAction(TR("Seuil..."), this, [this]() { applyAdjustment(14); });
     adjMenu->addAction(TR("Balance des couleurs..."), this, [this]() { applyAdjustment(8); });
     adjMenu->addSeparator();
     adjMenu->addAction(TR("Exposition..."), this, [this]() { applyAdjustment(10); });
@@ -3204,6 +3205,18 @@ void MainWindow::applyAdjustment(int adjustmentIndex) {
     case 13: {   // Invert Alpha
         InvertAlpha adj;
         applyImageOperationToTargetLayers([adj](const QImage &image) mutable { return adj.apply(image); }, adj.name());
+        break;
+    }
+    case 14: {   // Threshold
+        auto build = [](const QVector<int> &v) { Threshold a; a.setThreshold(v[0]); return a; };
+        PreviewDialog dlg(TR("Seuil"), layer->image(),
+            {{TR("Seuil :"), 0, 255, 128, ""}},
+            [build](const QImage &src, const QVector<int> &v) mutable { return build(v).apply(src); }, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+        Threshold adj = build(dlg.values());
+        applyImageOperationToTargetLayers([adj](const QImage &image) mutable {
+            return adj.apply(image);
+        }, adj.name());
         break;
     }
     }

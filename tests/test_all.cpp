@@ -38,7 +38,9 @@
 #include "tools/colorpickertool.h"
 #include "tools/lassotool.h"
 #include "panels/colorspanel.h"
+#include "dialogs/resizedialog.h"
 #include <QPushButton>
+#include <QDoubleSpinBox>
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QKeyEvent>
@@ -1651,6 +1653,23 @@ int main(int argc, char **argv) {
         CHECK(canvas.pan() == QPointF(5, 7), "a user pan survives a resize (no auto-centring)");
         canvas.resetToDefaultView();
         CHECK(isCentred(1500, 900), "resetToDefaultView re-enables centring after a pan");
+    }
+
+    SECTION("Resize dialog keeps typed decimals");
+    {
+        // Typing "8.5" into a Print Size field used to drop the ".5": the first
+        // keystroke fired valueChanged, syncFromPixels() wrote the value back to
+        // the same box mid-edit, and the reformat reset the text and cursor
+        // (issue #14). The fix is keyboardTracking(false) on the decimal spins,
+        // so they only commit on Enter / focus-out. Guard that invariant.
+        ResizeDialog dlg(800, 600, 96);
+        int checked = 0;
+        for (QDoubleSpinBox *sb : dlg.findChildren<QDoubleSpinBox *>()) {
+            CHECK(!sb->keyboardTracking(),
+                  "a resize-dialog decimal field does not re-format on every keystroke");
+            ++checked;
+        }
+        CHECK(checked >= 3, "found the print-size and percent decimal fields");
     }
 
     // ---------- RESULT ----------

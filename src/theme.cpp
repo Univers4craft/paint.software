@@ -220,9 +220,17 @@ const char *kDark = R"(
     QPushButton:pressed { background-color: #2d6ba3; }
     QPushButton:checked { background-color: #2d6ba3; border-color: #4a90d9; }
 
-    QSpinBox, QComboBox, QLineEdit { background-color: #1e1e1e; color: #f0f0f0; border: 1px solid #5a5a5a; padding: 1px 3px; border-radius: 2px; font-size: 11px; }
-    QSpinBox:focus, QComboBox:focus, QLineEdit:focus { border-color: #4a90d9; }
+    QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit { background-color: #1e1e1e; color: #f0f0f0; border: 1px solid #5a5a5a; padding: 1px 3px; border-radius: 2px; font-size: 11px; }
+    QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus { border-color: #4a90d9; }
+    /* The native up/down arrows are dark and vanish on the dark field (issue #11).
+       Qt's stylesheet fills a border-triangle as a solid block, so use light
+       arrow images instead. */
+    QAbstractSpinBox::up-button, QAbstractSpinBox::down-button { background: #333333; border-left: 1px solid #5a5a5a; width: 15px; }
+    QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #454545; }
+    QAbstractSpinBox::up-arrow { image: url(:/spin-up.png); width: 8px; height: 8px; }
+    QAbstractSpinBox::down-arrow { image: url(:/spin-down.png); width: 8px; height: 8px; }
     QComboBox::drop-down { border: none; width: 16px; }
+    QComboBox::down-arrow { image: url(:/spin-down.png); width: 8px; height: 8px; }
     QComboBox QAbstractItemView { background-color: #1e1e1e; color: #f0f0f0; selection-background-color: #2d6ba3; selection-color: #ffffff; }
     QCheckBox { color: #f0f0f0; font-size: 11px; spacing: 4px; }
 

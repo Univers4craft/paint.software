@@ -50,6 +50,11 @@ ResizeDialog::ResizeDialog(int currentWidth, int currentHeight, int dpi, QWidget
     m_percentSpin->setValue(100.0);
     m_percentSpin->setSuffix(" %");
     m_percentSpin->setEnabled(false);
+    // Commit only on Enter / focus-out, not on every keystroke. With live
+    // tracking, typing "8.5" fired valueChanged at "8", and the resulting
+    // syncFromPixels() rewrote this field's text mid-edit — reformatting "8."
+    // and dropping the ".5" the user was still typing (issue #14).
+    m_percentSpin->setKeyboardTracking(false);
     pixelGrid->addWidget(m_percentSpin, 3, 1);
 
     auto *modeGroup = new QButtonGroup(this);
@@ -68,6 +73,7 @@ ResizeDialog::ResizeDialog(int currentWidth, int currentHeight, int dpi, QWidget
     m_printWidthSpin->setRange(0.001, 9999.0);
     m_printWidthSpin->setDecimals(3);
     m_printWidthSpin->setSuffix(" in");
+    m_printWidthSpin->setKeyboardTracking(false);   // see percent spin (issue #14)
     m_printWidthSpin->setValue((double)currentWidth / dpi);
     printGrid->addWidget(m_printWidthSpin, 0, 1);
 
@@ -76,6 +82,7 @@ ResizeDialog::ResizeDialog(int currentWidth, int currentHeight, int dpi, QWidget
     m_printHeightSpin->setRange(0.001, 9999.0);
     m_printHeightSpin->setDecimals(3);
     m_printHeightSpin->setSuffix(" in");
+    m_printHeightSpin->setKeyboardTracking(false);   // see percent spin (issue #14)
     m_printHeightSpin->setValue((double)currentHeight / dpi);
     printGrid->addWidget(m_printHeightSpin, 1, 1);
 

@@ -328,6 +328,16 @@ void Selection::applyMode(const QImage &newMask, SelectionMode mode) {
                 dst[x] = std::min(dst[x], src[x]);
         }
         break;
+    case SelectionMode::Invert:
+        // XOR: a pixel ends up selected where exactly one of the two regions
+        // covered it. Overlaps cancel out.
+        for (int y = 0; y < m_mask.height(); ++y) {
+            uchar *dst = m_mask.scanLine(y);
+            const uchar *src = newMask.constScanLine(y);
+            for (int x = 0; x < m_mask.width(); ++x)
+                dst[x] = std::max(dst[x], src[x]) - std::min(dst[x], src[x]);
+        }
+        break;
     }
     updateEmpty();
 }

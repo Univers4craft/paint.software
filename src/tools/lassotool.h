@@ -19,4 +19,5 @@ private:
     QPolygonF m_lasso;
     // Captured at press: the modifier state can change before release.
     Qt::KeyboardModifiers m_modifiers = Qt::NoModifier;
+    Qt::MouseButton m_button = Qt::LeftButton;   // button that started the lasso (combine mode)
 };

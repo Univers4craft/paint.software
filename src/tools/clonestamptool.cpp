@@ -9,7 +9,10 @@ void CloneStampTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *even
     auto *layer = doc ? doc->activeLayer() : nullptr;
     if (!layer) return;
 
-    if (event->modifiers() & Qt::AltModifier || event->button() == Qt::RightButton) {
+    // Paint.NET sets the clone source with Ctrl+click. Alt and right-click are
+    // kept as familiar aliases from other editors.
+    if (event->modifiers() & (Qt::ControlModifier | Qt::AltModifier)
+        || event->button() == Qt::RightButton) {
         m_sourceSet = true;
         m_sourcePos = canvasPos;
         m_sourceImage = layer->image().copy();

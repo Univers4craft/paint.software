@@ -6,7 +6,12 @@
 SelectionTool::SelectionTool(SelectionShape shape) : m_shape(shape) {}
 
 void SelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &) {
-    if (event->button() != Qt::LeftButton) return;
+    // Left starts a plain selection; right is only meaningful with a modifier
+    // (Alt+right = intersect, Ctrl+right = invert, matching Paint.NET). A bare
+    // right-click is left for the canvas context menu.
+    if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
+    if (event->button() == Qt::RightButton && event->modifiers() == Qt::NoModifier) return;
+    m_button = event->button();
     m_selecting = true;
     m_startPos = canvasPos;
     m_currentPos = canvasPos;
@@ -29,7 +34,7 @@ void SelectionTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *eve
     if (rect.width() < 2 && rect.height() < 2) {
         doc->selection().clear();
     } else {
-        const SelectionMode mode = selectionModeFor(event->modifiers());
+        const SelectionMode mode = selectionModeFor(event->modifiers(), m_button);
 
         if (m_shape == SelectionShape::Rectangle)
             doc->selection().selectRect(rect, mode);

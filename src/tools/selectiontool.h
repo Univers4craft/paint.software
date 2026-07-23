@@ -22,6 +22,7 @@ public:
 private:
     SelectionShape m_shape;
     bool m_selecting = false;
+    Qt::MouseButton m_button = Qt::LeftButton;   // which button started the drag (combine mode)
     QPointF m_startPos;
     QPointF m_currentPos;
 };

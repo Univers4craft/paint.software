@@ -413,7 +413,11 @@ void CanvasWidget::mousePressEvent(QMouseEvent *event) {
         return;
     }
 
-    if (event->button() == Qt::RightButton && m_document && m_document->selection().hasSelection()) {
+    // Only a *bare* right-click opens the selection context menu. Alt+right and
+    // Ctrl+right are selection-combine gestures (intersect / invert) and must
+    // reach the active tool instead.
+    if (event->button() == Qt::RightButton && event->modifiers() == Qt::NoModifier
+        && m_document && m_document->selection().hasSelection()) {
         QPoint canvasPos = widgetToCanvas(event->position()).toPoint();
         if (m_document->selection().isSelected(canvasPos.x(), canvasPos.y())) {
             emit selectionContextMenuRequested(event->globalPosition().toPoint());

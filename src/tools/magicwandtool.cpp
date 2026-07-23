@@ -3,7 +3,11 @@
 #include "core/document.h"
 
 void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
-    if (event->button() != Qt::LeftButton) return;
+    // Left = combine per modifiers; right only with a modifier (Alt+right =
+    // intersect, Ctrl+right = invert). Bare right-click falls through to the
+    // canvas context menu.
+    if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
+    if (event->button() == Qt::RightButton && event->modifiers() == Qt::NoModifier) return;
     auto *doc = canvas.document();
     if (!doc) return;
 
@@ -11,7 +15,7 @@ void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event
     QImage image = doc->flattenVisible();
     if (!image.valid(pos)) return;
 
-    const SelectionMode mode = selectionModeFor(event->modifiers());
+    const SelectionMode mode = selectionModeFor(event->modifiers(), event->button());
 
     if (m_global) {
         // Select all pixels of the same color globally

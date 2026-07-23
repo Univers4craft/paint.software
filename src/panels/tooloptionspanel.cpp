@@ -116,6 +116,7 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     m_opacitySpin->setRange(1, 100);
     m_opacitySpin->setValue(100);
     m_opacitySpin->setSuffix("%");
+    m_opacitySpin->setKeyboardTracking(false);   // commit on Enter/focus-out, not per digit
     m_opacitySpin->setFixedWidth(58);
     m_opacitySpin->setFixedHeight(20);
     layout->addWidget(m_opacitySpin);
@@ -172,6 +173,7 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     m_fontSizeSpin = new QSpinBox;
     m_fontSizeSpin->setRange(1, 500);
     m_fontSizeSpin->setValue(24);
+    m_fontSizeSpin->setKeyboardTracking(false);   // commit on Enter/focus-out, not per digit
     m_fontSizeSpin->setFixedWidth(52);
     m_fontSizeSpin->setFixedHeight(20);
     layout->addWidget(m_fontSizeSpin);

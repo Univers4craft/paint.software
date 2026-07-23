@@ -268,6 +268,23 @@ int main(int argc, char **argv) {
         s3.selectRect(QRect(0,0,40,64), SelectionMode::Replace);
         s3.selectRect(QRect(30,0,34,64), SelectionMode::Intersect);
         CHECK(s3.isSelected(35,10) && !s3.isSelected(10,10), "Intersect mode");
+        // Invert (XOR) mode: overlap cancels, the rest unions.
+        Selection s5(64,64);
+        s5.selectRect(QRect(0,0,40,64), SelectionMode::Replace);
+        s5.selectRect(QRect(30,0,34,64), SelectionMode::Invert);
+        CHECK(s5.isSelected(10,10) && s5.isSelected(50,10) && !s5.isSelected(35,10),
+              "Invert mode XORs (overlap removed, rest kept)");
+
+        // Modifier mapping must match Paint.NET exactly: Ctrl=add, Alt=subtract,
+        // Alt+right=intersect, Ctrl+right=invert, nothing=replace.
+        CHECK(selectionModeFor(Qt::NoModifier, Qt::LeftButton) == SelectionMode::Replace, "no modifier = replace");
+        CHECK(selectionModeFor(Qt::ControlModifier, Qt::LeftButton) == SelectionMode::Add, "Ctrl = add");
+        CHECK(selectionModeFor(Qt::AltModifier, Qt::LeftButton) == SelectionMode::Subtract, "Alt = subtract");
+        CHECK(selectionModeFor(Qt::AltModifier, Qt::RightButton) == SelectionMode::Intersect, "Alt+right = intersect");
+        CHECK(selectionModeFor(Qt::ControlModifier, Qt::RightButton) == SelectionMode::Invert, "Ctrl+right = invert");
+        // The old Shift mapping must be gone.
+        CHECK(selectionModeFor(Qt::ShiftModifier, Qt::LeftButton) == SelectionMode::Replace, "Shift no longer adds");
+
         // feather / expand / contract run without crashing and keep selection
         Selection s4(64,64); s4.selectRect(QRect(20,20,24,24), SelectionMode::Replace);
         s4.expand(3);  CHECK(s4.isSelected(18,32), "expand grows selection");
@@ -1280,12 +1297,11 @@ int main(int argc, char **argv) {
                     if (s.isSelected(x, y)) ++n;
             return n;
         };
-        // The shared modifier→mode helper every selection tool now uses.
+        // The shared modifier→mode helper every selection tool uses — the
+        // detailed Paint.NET mapping is asserted in the selection-modes section.
         CHECK(selectionModeFor(Qt::NoModifier) == SelectionMode::Replace, "no modifier = replace");
-        CHECK(selectionModeFor(Qt::ShiftModifier) == SelectionMode::Add, "shift = add");
-        CHECK(selectionModeFor(Qt::ControlModifier) == SelectionMode::Subtract, "ctrl = subtract");
-        CHECK(selectionModeFor(Qt::ShiftModifier | Qt::ControlModifier) == SelectionMode::Intersect,
-              "shift+ctrl = intersect");
+        CHECK(selectionModeFor(Qt::ControlModifier) == SelectionMode::Add, "ctrl = add");
+        CHECK(selectionModeFor(Qt::AltModifier) == SelectionMode::Subtract, "alt = subtract");
 
         {   // intersect keeps only the overlap
             Selection s(100, 100);

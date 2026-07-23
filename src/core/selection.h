@@ -9,18 +9,27 @@ enum class SelectionMode {
     Replace,
     Add,
     Subtract,
-    Intersect
+    Intersect,
+    Invert      // XOR: like Add, but overlapping regions are removed
 };
 
 // One place decides how modifier keys pick the selection mode, so every
-// selection tool (rectangle, ellipse, lasso, magic wand) behaves the same:
-//   Shift = add, Ctrl = subtract, Shift+Ctrl = intersect, nothing = replace.
-inline SelectionMode selectionModeFor(Qt::KeyboardModifiers mods) {
-    const bool shift = mods & Qt::ShiftModifier;
+// selection tool (rectangle, ellipse, lasso, magic wand) behaves the same.
+// This mirrors Paint.NET exactly:
+//   Ctrl            = add (union)
+//   Alt             = subtract (exclude)
+//   Alt + right-btn = intersect
+//   Ctrl + right-btn= invert (xor)
+//   nothing         = replace
+inline SelectionMode selectionModeFor(Qt::KeyboardModifiers mods,
+                                      Qt::MouseButton button = Qt::LeftButton) {
+    const bool alt = mods & Qt::AltModifier;
     const bool ctrl = mods & Qt::ControlModifier;
-    if (shift && ctrl) return SelectionMode::Intersect;
-    if (shift) return SelectionMode::Add;
-    if (ctrl) return SelectionMode::Subtract;
+    const bool right = button == Qt::RightButton;
+    if (right && alt) return SelectionMode::Intersect;
+    if (right && ctrl) return SelectionMode::Invert;
+    if (ctrl) return SelectionMode::Add;
+    if (alt) return SelectionMode::Subtract;
     return SelectionMode::Replace;
 }
 

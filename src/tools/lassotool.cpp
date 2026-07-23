@@ -6,8 +6,13 @@
 #include <QPainterPath>
 
 void LassoTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &) {
-    if (event->button() == Qt::LeftButton) {
+    // Left draws freely; right only with a modifier (Alt+right = intersect,
+    // Ctrl+right = invert). Bare right-click is left for the context menu.
+    const bool left = event->button() == Qt::LeftButton;
+    const bool modRight = event->button() == Qt::RightButton && event->modifiers() != Qt::NoModifier;
+    if (left || modRight) {
         m_selecting = true;
+        m_button = event->button();
         m_modifiers = event->modifiers();
         m_lasso.clear();
         m_lasso << canvasPos;
@@ -15,14 +20,14 @@ void LassoTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, Ca
 }
 
 void LassoTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
-    if (m_selecting && (event->buttons() & Qt::LeftButton)) {
+    if (m_selecting && (event->buttons() & (Qt::LeftButton | Qt::RightButton))) {
         m_lasso << canvasPos;
         canvas.update();
     }
 }
 
 void LassoTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
-    if (m_selecting && event->button() == Qt::LeftButton) {
+    if (m_selecting && event->button() == m_button) {
         m_lasso << canvasPos;
         m_selecting = false;
 
@@ -31,7 +36,7 @@ void LassoTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, 
             QPainterPath path;
             path.addPolygon(m_lasso);
             path.closeSubpath();
-            doc->selection().selectPath(path, selectionModeFor(m_modifiers));
+            doc->selection().selectPath(path, selectionModeFor(m_modifiers, m_button));
             emit doc->selectionChanged();
         }
         m_lasso.clear();

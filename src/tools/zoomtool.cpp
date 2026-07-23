@@ -4,6 +4,7 @@
 #include <QCursor>
 #include <QPixmap>
 #include <QPainter>
+#include <algorithm>
 
 QCursor ZoomTool::cursor() const {
     // Magnifier cursor: draw a 24x24 magnifier icon
@@ -23,13 +24,65 @@ QCursor ZoomTool::cursor() const {
 }
 
 void ZoomTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
-    Q_UNUSED(canvasPos);
+    Q_UNUSED(canvas);
+    if (event->button() == Qt::LeftButton) {
+        // A left press may become a zoom-to-rectangle drag; decide on release.
+        m_dragging = true;
+        m_startCanvas = canvasPos;
+        m_currentCanvas = canvasPos;
+    }
+}
+
+void ZoomTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWidget &canvas) {
+    if (!m_dragging) return;
+    m_currentCanvas = canvasPos;
+    canvas.update();
+}
+
+void ZoomTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
+    const bool wasDragging = m_dragging;
+    m_dragging = false;
+
+    // A dragged rectangle (in widget pixels) big enough to mean "zoom here"
+    // maximises that region, like Paint.NET. Anything smaller is a plain click.
+    if (wasDragging && event->button() == Qt::LeftButton) {
+        const QPointF a = canvas.canvasToWidget(m_startCanvas);
+        const QPointF b = canvas.canvasToWidget(canvasPos);
+        const QRectF box = QRectF(a, b).normalized();
+        if (box.width() > 8 && box.height() > 8) {
+            const QRectF rectCanvas = QRectF(m_startCanvas, canvasPos).normalized();
+            const int rs = canvas.rulerSize();
+            const double vw = canvas.width() - rs, vh = canvas.height() - rs;
+            const double z = std::min(vw / std::max(1.0, rectCanvas.width()),
+                                      vh / std::max(1.0, rectCanvas.height()));
+            canvas.setZoom(z);
+            // Centre the chosen region in the viewport.
+            const QPointF centreCanvas = rectCanvas.center();
+            const QPointF want(rs + vw / 2.0, rs + vh / 2.0);
+            const QPointF haveNoPan = centreCanvas * canvas.zoom() + QPointF(rs, rs);
+            canvas.setPan(want - haveNoPan);
+            canvas.update();
+            return;
+        }
+    }
+
+    // Plain click: left zooms in, right zooms out, point under cursor fixed.
     if (event->button() == Qt::LeftButton || event->button() == Qt::RightButton) {
-        // Keep the point under the cursor fixed while zooming.
         QPointF oldCanvas = canvas.widgetToCanvas(event->position());
         double factor = (event->button() == Qt::LeftButton) ? 1.5 : (1.0 / 1.5);
         canvas.setZoom(canvas.zoom() * factor);
         QPointF newWidget = canvas.canvasToWidget(oldCanvas);
         canvas.setPan(canvas.pan() + (event->position() - newWidget));
     }
+}
+
+void ZoomTool::drawOverlay(QPainter &painter, const CanvasWidget &canvas) {
+    if (!m_dragging) return;
+    const QPointF a = canvas.canvasToWidget(m_startCanvas);
+    const QPointF b = canvas.canvasToWidget(m_currentCanvas);
+    const QRectF box = QRectF(a, b).normalized();
+    if (box.width() < 2 && box.height() < 2) return;
+    painter.setPen(QPen(QColor(0, 120, 215), 1, Qt::DashLine));
+    painter.setBrush(QColor(0, 120, 215, 40));
+    painter.drawRect(box);
 }

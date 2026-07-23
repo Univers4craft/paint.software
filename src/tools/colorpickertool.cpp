@@ -17,11 +17,15 @@ void ColorPickerTool::pickColor(const QPointF &canvasPos, QMouseEvent *event, Ca
     auto *doc = canvas.document();
     if (!doc) return;
 
-    QImage flat = doc->flattenVisible();
+    // Paint.NET samples the active LAYER by default; hold Ctrl to sample the
+    // composite (Image) instead.
+    auto *layer = doc->activeLayer();
+    const bool sampleImage = (event->modifiers() & Qt::ControlModifier) || !layer;
+    QImage src = sampleImage ? doc->flattenVisible() : layer->image();
     QPoint pos = toPixelPos(canvasPos);
-    if (pos.x() < 0 || pos.y() < 0 || pos.x() >= flat.width() || pos.y() >= flat.height()) return;
+    if (pos.x() < 0 || pos.y() < 0 || pos.x() >= src.width() || pos.y() >= src.height()) return;
 
-    QColor color = flat.pixelColor(pos);
+    QColor color = src.pixelColor(pos);
     if (event->buttons() & Qt::LeftButton)
         doc->setPrimaryColor(color);
     else if (event->buttons() & Qt::RightButton)

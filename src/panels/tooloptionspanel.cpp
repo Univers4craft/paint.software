@@ -4,6 +4,7 @@
 #include "tools/gradienttool.h"
 #include "tools/linetool.h"
 #include "tools/magicwandtool.h"
+#include "tools/filltool.h"
 #include "tools/texttool.h"
 #include "core/layer.h"
 #include "toolicons.h"
@@ -104,7 +105,7 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
 
     // --- Tolerance ---
     m_toleranceGroup = makeSliderGroup(TR("Tolérance :"), m_toleranceLabel, m_toleranceSlider,
-                                       m_toleranceValue, 0, 255, 32);
+                                       m_toleranceValue, 0, 100, 50);
     layout->addWidget(m_toleranceGroup);
     connect(m_toleranceSlider, &QSlider::valueChanged, this, &ToolOptionsPanel::onToleranceChanged);
 
@@ -197,9 +198,20 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     m_boldBtn = makeStyleButton("B", TR("Gras"), false, false);
     m_italicBtn = makeStyleButton("I", TR("Italique"), true, false);
     m_underlineBtn = makeStyleButton("U", TR("Souligné"), false, true);
+    m_strikeBtn = makeStyleButton("S", TR("Barré"), false, false);
+    { QFont f = m_strikeBtn->font(); f.setStrikeOut(true); m_strikeBtn->setFont(f); }
     layout->addWidget(m_boldBtn);
     layout->addWidget(m_italicBtn);
     layout->addWidget(m_underlineBtn);
+    layout->addWidget(m_strikeBtn);
+
+    m_alignCombo = new QComboBox;
+    m_alignCombo->addItems({TR("Gauche"), TR("Centré"), TR("Droite")});
+    m_alignCombo->setFixedHeight(20);
+    m_alignCombo->setToolTip(TR("Alignement du texte"));
+    layout->addWidget(m_alignCombo);
+    connect(m_alignCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onTextStyleChanged);
 
     // --- Antialiasing ---
     m_antialiasCheck = new QCheckBox(TR("Anticrénelage"));
@@ -319,6 +331,8 @@ void ToolOptionsPanel::updateFromTool() {
         m_boldBtn->blockSignals(true);      m_boldBtn->setChecked(text->bold());           m_boldBtn->blockSignals(false);
         m_italicBtn->blockSignals(true);    m_italicBtn->setChecked(text->italic());       m_italicBtn->blockSignals(false);
         m_underlineBtn->blockSignals(true); m_underlineBtn->setChecked(text->underline()); m_underlineBtn->blockSignals(false);
+        m_strikeBtn->blockSignals(true);    m_strikeBtn->setChecked(text->strikeOut());    m_strikeBtn->blockSignals(false);
+        m_alignCombo->blockSignals(true);   m_alignCombo->setCurrentIndex(static_cast<int>(text->alignment())); m_alignCombo->blockSignals(false);
     }
 
     populateVariantCombo();
@@ -327,8 +341,9 @@ void ToolOptionsPanel::updateFromTool() {
     const ToolType t = m_tool->type();
     const bool isBrushLike = (t == ToolType::Brush || t == ToolType::Eraser || t == ToolType::CloneStamp);
     const bool hasTolerance = (t == ToolType::Fill || t == ToolType::MagicWand || t == ToolType::Recolor);
+    // Pencil is always one pixel in Paint.NET, so it gets no width control.
     const bool hasSize = isBrushLike || t == ToolType::Shape || t == ToolType::Line
-                         || t == ToolType::Pencil || t == ToolType::Recolor;
+                         || t == ToolType::Recolor;
     const bool hasFill = (t == ToolType::Shape);
     const bool hasOpacity = hasSize || t == ToolType::Fill || t == ToolType::Gradient
                             || t == ToolType::Text;
@@ -345,7 +360,8 @@ void ToolOptionsPanel::updateFromTool() {
     m_fillLabel->setVisible(hasFill);
     m_fillCombo->setVisible(hasFill);
     const bool hasVariant = (t == ToolType::Shape || t == ToolType::Gradient
-                             || t == ToolType::Line || t == ToolType::MagicWand);
+                             || t == ToolType::Line || t == ToolType::MagicWand
+                             || t == ToolType::Fill);
     m_variantLabel->setVisible(hasVariant);
     m_variantCombo->setVisible(hasVariant);
     m_blendModeLabel->setVisible(t == ToolType::Brush);
@@ -358,6 +374,8 @@ void ToolOptionsPanel::updateFromTool() {
     m_boldBtn->setVisible(hasText);
     m_italicBtn->setVisible(hasText);
     m_underlineBtn->setVisible(hasText);
+    m_strikeBtn->setVisible(hasText);
+    m_alignCombo->setVisible(hasText);
 
     m_antialiasCheck->setVisible(hasAA);
 }
@@ -430,6 +448,10 @@ void ToolOptionsPanel::populateVariantCombo() {
         m_variantLabel->setText(TR("Remplissage :"));
         m_variantCombo->addItems({TR("Contigu"), TR("Global")});
         m_variantCombo->setCurrentIndex(wand->isGlobal() ? 1 : 0);
+    } else if (auto *fill = dynamic_cast<FillTool*>(m_tool)) {
+        m_variantLabel->setText(TR("Remplissage :"));
+        m_variantCombo->addItems({TR("Contigu"), TR("Global")});
+        m_variantCombo->setCurrentIndex(fill->isGlobal() ? 1 : 0);
     }
 
     m_variantCombo->blockSignals(false);
@@ -445,6 +467,8 @@ void ToolOptionsPanel::onVariantChanged(int index) {
         line->setLineStyle(static_cast<LineTool::LineStyle>(index));
     else if (auto *wand = dynamic_cast<MagicWandTool*>(m_tool))
         wand->setGlobal(index == 1);
+    else if (auto *fill = dynamic_cast<FillTool*>(m_tool))
+        fill->setGlobal(index == 1);
     emit toolOptionsChanged();
 }
 
@@ -477,6 +501,8 @@ void ToolOptionsPanel::onTextStyleChanged() {
         text->setBold(m_boldBtn->isChecked());
         text->setItalic(m_italicBtn->isChecked());
         text->setUnderline(m_underlineBtn->isChecked());
+        text->setStrikeOut(m_strikeBtn->isChecked());
+        text->setAlignment(static_cast<TextTool::Align>(m_alignCombo->currentIndex()));
         emit toolOptionsChanged();
     }
 }
@@ -494,6 +520,16 @@ void ToolOptionsPanel::retranslate() {
     m_boldBtn->setToolTip(TR("Gras"));
     m_italicBtn->setToolTip(TR("Italique"));
     m_underlineBtn->setToolTip(TR("Souligné"));
+    m_strikeBtn->setToolTip(TR("Barré"));
+    m_alignCombo->setToolTip(TR("Alignement du texte"));
+    {
+        const int a = m_alignCombo->currentIndex();
+        m_alignCombo->blockSignals(true);
+        m_alignCombo->clear();
+        m_alignCombo->addItems({TR("Gauche"), TR("Centré"), TR("Droite")});
+        m_alignCombo->setCurrentIndex(a < 0 ? 0 : a);
+        m_alignCombo->blockSignals(false);
+    }
     m_antialiasCheck->setText(TR("Anticrénelage"));
 
     const int fill = m_fillCombo->currentIndex();

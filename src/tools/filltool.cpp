@@ -22,14 +22,16 @@ void FillTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, Can
     QColor fillColor = (event->button() == Qt::LeftButton) ? doc->primaryColor() : doc->secondaryColor();
     fillColor.setAlphaF(fillColor.alphaF() * (m_opacity / 100.0));
 
-    floodFill(layer->image(), pos, fillColor, doc);
+    // Shift temporarily forces Global mode for this click (Paint.NET behaviour).
+    const bool global = m_global || (event->modifiers() & Qt::ShiftModifier);
+    floodFill(layer->image(), pos, fillColor, doc, global);
     doc->pushImageEdit(doc->activeLayerIndex(), before, "Paint Bucket");
 }
 
 void FillTool::mouseMoveEvent(const QPointF &, QMouseEvent *, CanvasWidget &) {}
 void FillTool::mouseReleaseEvent(const QPointF &, QMouseEvent *, CanvasWidget &) {}
 
-void FillTool::floodFill(QImage &image, const QPoint &pos, const QColor &fillColor, Document *doc) {
+void FillTool::floodFill(QImage &image, const QPoint &pos, const QColor &fillColor, Document *doc, bool global) {
     // Work in straight-alpha space so colour comparisons and blending are correct
     // regardless of the layer's premultiplied storage.
     QImage buf = image.convertToFormat(QImage::Format_ARGB32);
@@ -52,6 +54,22 @@ void FillTool::floodFill(QImage &image, const QPoint &pos, const QColor &fillCol
         return qRgba(qBound(0,r,255), qBound(0,g,255), qBound(0,b,255), int(oa * 255 + 0.5));
     };
 
+    auto within = [&](QRgb c) {
+        int dr = qRed(c) - tr, dg = qGreen(c) - tg, db = qBlue(c) - tb, da = qAlpha(c) - ta;
+        int dist = static_cast<int>(std::sqrt(double(dr*dr + dg*dg + db*db + da*da)));
+        return dist <= toleranceDistance();
+    };
+
+    if (global) {
+        // Global: recolour every matching pixel in the layer, no contiguity.
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x)
+                if (selectionAllows(doc, x, y) && within(colorAt(x, y)))
+                    reinterpret_cast<QRgb*>(buf.scanLine(y))[x] = blended(colorAt(x, y));
+        image = buf.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        return;
+    }
+
     QVector<QVector<bool>> visited(h, QVector<bool>(w, false));
     QQueue<QPoint> queue;
     queue.enqueue(pos);
@@ -66,10 +84,7 @@ void FillTool::floodFill(QImage &image, const QPoint &pos, const QColor &fillCol
         for (const QPoint &n : neighbors) {
             if (n.x() >= 0 && n.x() < w && n.y() >= 0 && n.y() < h && !visited[n.y()][n.x()]
                 && selectionAllows(doc, n.x(), n.y())) {   // keep the flood inside the selection
-                QRgb c = colorAt(n.x(), n.y());
-                int dr = qRed(c) - tr, dg = qGreen(c) - tg, db = qBlue(c) - tb, da = qAlpha(c) - ta;
-                int dist = static_cast<int>(std::sqrt(double(dr*dr + dg*dg + db*db + da*da)));
-                if (dist <= m_tolerance) {
+                if (within(colorAt(n.x(), n.y()))) {
                     visited[n.y()][n.x()] = true;
                     queue.enqueue(n);
                 }

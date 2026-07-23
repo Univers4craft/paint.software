@@ -80,23 +80,16 @@ void EraserTool::compositeErase(Document *doc, Layer *layer) {
     QImage result = m_beforeImage.copy();
     QPainter painter(&result);
     clipToSelection(painter, doc);
-    painter.setOpacity((m_opacity / 100.0) * m_pressure);
-    if (m_toSecondary) {
-        // Right-click: paint the secondary colour through the stroke coverage
-        // (as advertised in the tool's help text) instead of erasing to transparent.
-        QImage colored = m_strokeBuffer;
-        QPainter cp(&colored);
-        cp.setCompositionMode(QPainter::CompositionMode_SourceIn);
-        cp.fillRect(colored.rect(), doc->secondaryColor());
-        cp.end();
-        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-        painter.drawImage(0, 0, colored);
-    } else {
-        // Remove (strokeCoverage * opacity) of alpha from the before-image;
-        // DestinationOut subtracts the source alpha.
-        painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-        painter.drawImage(0, 0, m_strokeBuffer);
-    }
+    // Both buttons erase to transparency; the right button scales the erase by
+    // the secondary colour's alpha, matching Paint.NET (left uses the primary
+    // colour's alpha — full here, since the eraser ignores primary RGB).
+    double strength = (m_opacity / 100.0) * m_pressure;
+    if (m_toSecondary)
+        strength *= doc->secondaryColor().alphaF();
+    painter.setOpacity(strength);
+    // DestinationOut subtracts (strokeCoverage * strength) of alpha.
+    painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    painter.drawImage(0, 0, m_strokeBuffer);
     painter.end();
     layer->setImage(result);
 }

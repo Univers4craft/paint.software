@@ -99,4 +99,6 @@ private:
     QToolButton *m_boldBtn;
     QToolButton *m_italicBtn;
     QToolButton *m_underlineBtn;
+    QToolButton *m_strikeBtn;
+    class QComboBox *m_alignCombo;   // Left / Center / Right
 };

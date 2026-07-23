@@ -49,11 +49,18 @@ void TextTool::insertText(const QString &text, CanvasWidget &canvas) {
     canvas.update();
 }
 
+double TextTool::alignOffset(const QString &line, const QFontMetricsF &fm) const {
+    if (m_align == Align::Left) return 0.0;
+    const double w = fm.horizontalAdvance(line);
+    return (m_align == Align::Center) ? -w / 2.0 : -w;
+}
+
 QFont TextTool::effectiveFont() const {
     QFont f = m_font;
     f.setBold(m_bold);
     f.setItalic(m_italic);
     f.setUnderline(m_underline);
+    f.setStrikeOut(m_strikeout);
     return f;
 }
 
@@ -74,7 +81,7 @@ void TextTool::drawOverlay(QPainter &painter, const CanvasWidget &canvas) {
     QStringList lines = (m_text + "|").split('\n');
     double y = wPos.y();
     for (const QString &line : lines) {
-        painter.drawText(QPointF(wPos.x(), y), line);
+        painter.drawText(QPointF(wPos.x() + alignOffset(line, fm), y), line);
         y += lineH;
     }
     painter.restore();
@@ -102,7 +109,7 @@ void TextTool::commitText(CanvasWidget &canvas) {
     const double lineH = fm.lineSpacing();
     double y = m_textPos.y();
     for (const QString &line : m_text.split('\n')) {
-        painter.drawText(QPointF(m_textPos.x(), y), line);
+        painter.drawText(QPointF(m_textPos.x() + alignOffset(line, fm), y), line);
         y += lineH;
     }
     painter.end();

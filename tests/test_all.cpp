@@ -285,6 +285,15 @@ int main(int argc, char **argv) {
         // The old Shift mapping must be gone.
         CHECK(selectionModeFor(Qt::ShiftModifier, Qt::LeftButton) == SelectionMode::Replace, "Shift no longer adds");
 
+        // Tolerance is now a 0..100 percentage (Paint.NET), mapped to the 0..255
+        // colour-distance basis the flood/wand/recolor code compares against.
+        BrushTool tolTool;   // any Tool exposes the shared tolerance
+        tolTool.setTolerance(0);   CHECK(tolTool.toleranceDistance() == 0, "0% tolerance = 0 distance");
+        tolTool.setTolerance(100); CHECK(tolTool.toleranceDistance() == 255, "100% tolerance = 255 distance");
+        tolTool.setTolerance(50);  CHECK(tolTool.toleranceDistance() >= 126 && tolTool.toleranceDistance() <= 128,
+                                         "50% tolerance = ~127 distance");
+        tolTool.setTolerance(500); CHECK(tolTool.tolerance() == 100, "tolerance clamps to 100%");
+
         // feather / expand / contract run without crashing and keep selection
         Selection s4(64,64); s4.selectRect(QRect(20,20,24,24), SelectionMode::Replace);
         s4.expand(3);  CHECK(s4.isSelected(18,32), "expand grows selection");

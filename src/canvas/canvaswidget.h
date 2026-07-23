@@ -95,6 +95,7 @@ private:
     bool m_autoCenter = true;
 
     bool m_isPanning = false;
+    bool m_spaceDown = false;   // Space held: pan-drag with any tool (Paint.NET)
     QPoint m_lastPanPos;
 
     bool m_showGrid = false;

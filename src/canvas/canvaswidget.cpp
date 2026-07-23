@@ -406,7 +406,11 @@ void CanvasWidget::updateMarchingAnts() {
 }
 
 void CanvasWidget::mousePressEvent(QMouseEvent *event) {
-    if (event->button() == Qt::MiddleButton || (event->button() == Qt::LeftButton && event->modifiers() & Qt::AltModifier)) {
+    // Pan with the middle button, or with the left button while Space is held —
+    // Paint.NET's shortcut. Alt is deliberately NOT a pan modifier: it is the
+    // selection-subtract key and the two would collide.
+    if (event->button() == Qt::MiddleButton
+        || (event->button() == Qt::LeftButton && m_spaceDown)) {
         m_isPanning = true;
         m_lastPanPos = event->pos();
         setCursor(Qt::ClosedHandCursor);
@@ -481,6 +485,16 @@ void CanvasWidget::wheelEvent(QWheelEvent *event) {
 }
 
 void CanvasWidget::keyPressEvent(QKeyEvent *event) {
+    // Space arms pan-drag for any tool (unless the Text tool is capturing keys).
+    if (event->key() == Qt::Key_Space && !event->isAutoRepeat()
+        && !(m_currentTool && m_currentTool->wantsKeyInput())) {
+        if (!m_spaceDown) {
+            m_spaceDown = true;
+            if (!m_isPanning) setCursor(Qt::OpenHandCursor);
+        }
+        event->accept();
+        return;
+    }
     if (event->key() == Qt::Key_Delete && m_document && m_document->selection().hasSelection()) {
         emit deleteSelectionRequested();
         event->accept();
@@ -505,6 +519,12 @@ void CanvasWidget::keyPressEvent(QKeyEvent *event) {
 }
 
 void CanvasWidget::keyReleaseEvent(QKeyEvent *event) {
+    if (event->key() == Qt::Key_Space && !event->isAutoRepeat() && m_spaceDown) {
+        m_spaceDown = false;
+        if (!m_isPanning && m_currentTool) setCursor(m_currentTool->cursor());
+        event->accept();
+        return;
+    }
     if (m_currentTool) {
         m_currentTool->keyReleaseEvent(event, *this);
         update();

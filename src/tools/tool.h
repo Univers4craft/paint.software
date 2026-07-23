@@ -79,8 +79,11 @@ public:
     double pressure() const { return m_pressure; }
     void setPressure(double p) { m_pressure = qBound(0.0, p, 1.0); }
 
+    // Tolerance is a 0..100 percentage, as in Paint.NET. Tools convert it to the
+    // 0..255 colour-distance basis with toleranceDistance().
     int tolerance() const { return m_tolerance; }
-    void setTolerance(int t) { m_tolerance = qBound(0, t, 255); }
+    void setTolerance(int t) { m_tolerance = qBound(0, t, 100); }
+    int toleranceDistance() const { return int(m_tolerance * 2.55 + 0.5); }
 
     // Dab spacing as a percentage of brush size (smaller = smoother strokes).
     int spacing() const { return m_spacing; }
@@ -106,7 +109,7 @@ protected:
     int m_opacity = 100;
     bool m_antialiased = true;
     double m_pressure = 1.0;
-    int m_tolerance = 32;
+    int m_tolerance = 50;   // percent, Paint.NET's default
     int m_spacing = 15;
     int m_blendMode = 0;
 };

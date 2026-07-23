@@ -6,19 +6,23 @@
 
 void RecolorTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (!canvas.document() || !canvas.document()->activeLayer()) return;
-    if (event->button() != Qt::LeftButton) return;
+    if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
 
     auto *layer = canvas.document()->activeLayer();
     if (layer->isLocked()) return;
     m_drawing = true;
     m_beforeImage = layer->image().copy();
 
-    // Sample the colour under the initial click as the recolor target; paint in
-    // the primary colour (right button would swap, handled by caller mapping).
+    // Sample the colour under the initial click as the recolor target. Paint in
+    // the primary colour with the left button, the secondary with the right —
+    // Paint.NET reverses the roles of the two colours on right-click.
+    const bool rightButton = event->button() == Qt::RightButton;
     QPoint c = toPixelPos(canvasPos);
     QImage &img = layer->image();
-    m_targetColor = img.rect().contains(c) ? img.pixelColor(c) : canvas.document()->secondaryColor();
-    m_replaceColor = canvas.document()->primaryColor();
+    auto *doc = canvas.document();
+    m_targetColor = img.rect().contains(c) ? img.pixelColor(c)
+                                           : (rightButton ? doc->primaryColor() : doc->secondaryColor());
+    m_replaceColor = rightButton ? doc->secondaryColor() : doc->primaryColor();
     recolorAt(canvasPos, canvas);
 }
 
@@ -42,7 +46,7 @@ void RecolorTool::recolorAt(const QPointF &pos, CanvasWidget &canvas) {
     const QColor target = m_targetColor;
     const QColor primary = m_replaceColor;
     int radius = m_brushSize / 2;
-    int tol = m_tolerance;
+    int tol = toleranceDistance();
     QPoint center = toPixelPos(pos);
 
     for (int dy = -radius; dy <= radius; ++dy) {

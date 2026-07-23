@@ -29,12 +29,20 @@ public:
     bool italic() const { return m_italic; }
     void setUnderline(bool u) { m_underline = u; }
     bool underline() const { return m_underline; }
+    void setStrikeOut(bool s) { m_strikeout = s; }
+    bool strikeOut() const { return m_strikeout; }
+
+    enum class Align { Left, Center, Right };
+    void setAlignment(Align a) { m_align = a; }
+    Align alignment() const { return m_align; }
 
     void commitText(CanvasWidget &canvas);
 
 private:
     // The font actually used for rendering: base family/size plus the B/I/U flags.
     QFont effectiveFont() const;
+    // Horizontal shift of a line from the anchor for the current alignment.
+    double alignOffset(const QString &line, const class QFontMetricsF &fm) const;
 
     bool m_editing = false;
     QPointF m_textPos;
@@ -43,4 +51,6 @@ private:
     bool m_bold = false;
     bool m_italic = false;
     bool m_underline = false;
+    bool m_strikeout = false;
+    Align m_align = Align::Left;
 };

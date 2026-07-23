@@ -28,7 +28,7 @@ void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event
                 QRgb c = image.pixel(x, y);
                 int dr = qRed(c) - tr, dg = qGreen(c) - tg, db = qBlue(c) - tb, da = qAlpha(c) - ta;
                 int dist = static_cast<int>(std::sqrt(dr*dr + dg*dg + db*db + da*da));
-                if (dist <= m_tolerance)
+                if (dist <= toleranceDistance())
                     mask.scanLine(y)[x] = 255;
             }
         }
@@ -49,7 +49,7 @@ void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event
         }
         doc->selection().selectPath(path, mode);
     } else {
-        doc->selection().selectByColor(image, pos, m_tolerance, mode);
+        doc->selection().selectByColor(image, pos, toleranceDistance(), mode);
     }
 
     emit doc->selectionChanged();

@@ -96,6 +96,8 @@ const QHash<QString, QString> &table() {
         {"RVB", "RGB"},
         {"TSV", "HSV"},
         {"Barré", "Strikethrough"},
+        {"Style de remplissage :", "Fill Style:"},
+        {"Motif de remplissage", "Fill pattern"},
         {"Alignement du texte", "Text alignment"},
         {"Gauche", "Left"},
         {"Centré", "Center"},

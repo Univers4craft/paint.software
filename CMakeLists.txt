@@ -25,6 +25,7 @@ set(CORE_SOURCES
     src/core/layer.cpp
     src/core/selection.cpp
     src/core/history.cpp
+    src/core/hatchpatterns.cpp
 )
 
 set(CANVAS_SOURCES

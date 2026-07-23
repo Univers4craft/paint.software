@@ -1,6 +1,7 @@
 #include "shapetool.h"
 #include "canvas/canvaswidget.h"
 #include "core/document.h"
+#include "core/hatchpatterns.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <cmath>
@@ -35,7 +36,11 @@ void ShapeTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWi
 
         QPen pen(primary, m_brushSize);
         painter.setPen((m_shapeFill == ShapeFill::Filled) ? Qt::NoPen : pen);
-        painter.setBrush((m_shapeFill == ShapeFill::Outline) ? Qt::NoBrush : QBrush(secondary));
+        // Fill style: solid secondary colour, or a hatch pattern (primary lines
+        // over the secondary background), matching Paint.NET's Fill Style.
+        const QBrush fill = (m_fillStyle > 0) ? Hatch::brush(m_fillStyle, primary, secondary)
+                                              : QBrush(secondary);
+        painter.setBrush((m_shapeFill == ShapeFill::Outline) ? Qt::NoBrush : fill);
         painter.setOpacity(m_opacity / 100.0);
 
         QRectF rect(m_startPos, m_currentPos);

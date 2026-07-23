@@ -39,6 +39,7 @@
 #include "tools/lassotool.h"
 #include "panels/colorspanel.h"
 #include "panels/tooloptionspanel.h"
+#include "core/hatchpatterns.h"
 #include "dialogs/resizedialog.h"
 #include <QPushButton>
 #include <QComboBox>
@@ -1766,6 +1767,58 @@ int main(int argc, char **argv) {
         line2.deactivate(canvas2);
         CHECK(!imagesDiffer(before2, doc2.activeLayer()->image()),
               "Escape cancels the line — nothing is painted");
+    }
+
+    SECTION("Fill Style: solid + hatch patterns");
+    {
+        // Paint.NET's Fill Style is Solid Color plus the GDI+ hatch set (~53).
+        CHECK(Hatch::count() >= 54, "at least 54 fill styles (Solid + 53 hatches)");
+        CHECK(Hatch::name(0) == QStringLiteral("Solid Color"), "index 0 is Solid Color");
+
+        auto fillWith = [](int style) {
+            QImage img(16, 16, QImage::Format_ARGB32_Premultiplied);
+            img.fill(Qt::transparent);
+            QPainter p(&img);
+            p.setPen(Qt::NoPen);
+            p.setBrush(Hatch::brush(style, Qt::black, Qt::white));
+            p.drawRect(0, 0, 16, 16);
+            p.end();
+            int black = 0, white = 0;
+            for (int y = 0; y < 16; ++y)
+                for (int x = 0; x < 16; ++x) {
+                    QRgb c = img.pixel(x, y);
+                    if (qRed(c) < 40) ++black; else if (qRed(c) > 215) ++white;
+                }
+            return std::make_pair(black, white);
+        };
+
+        auto [sb, sw] = fillWith(0);
+        CHECK(sb > 200 && sw == 0, "Solid style fills uniformly with the foreground");
+        // A hatch has BOTH foreground and background pixels — real structure.
+        auto [hb, hw] = fillWith(5);   // Cross
+        CHECK(hb > 0 && hw > 0, "a hatch pattern paints both fg and bg pixels");
+        auto [pb, pw] = fillWith(12);  // 50%
+        CHECK(pb > 40 && pw > 40, "the 50% pattern is roughly half foreground");
+
+        // End to end: a filled shape with a hatch fill style paints a pattern,
+        // not a flat colour.
+        Document doc(64, 64);
+        doc.activeLayer()->clear(Qt::white);
+        doc.setPrimaryColor(Qt::black);
+        doc.setSecondaryColor(Qt::white);
+        CanvasWidget canvas; canvas.setDocument(&doc);
+        ShapeTool sh;
+        sh.setShapeFill(ShapeFill::Filled);
+        sh.setFillStyle(5);            // Cross hatch
+        strokeTool(&sh, canvas, QPointF(8, 8), QPointF(56, 56));
+        int fg = 0, bg = 0;
+        const QImage &out = doc.activeLayer()->image();
+        for (int y = 20; y < 44; ++y)
+            for (int x = 20; x < 44; ++x) {
+                QRgb c = out.pixel(x, y);
+                if (qRed(c) < 40) ++fg; else if (qRed(c) > 215) ++bg;
+            }
+        CHECK(fg > 0 && bg > 0, "a hatch-filled shape shows the pattern (fg + bg inside)");
     }
 
     // ---------- RESULT ----------

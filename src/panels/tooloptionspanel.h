@@ -39,6 +39,7 @@ private slots:
     void onAntialiasToggled(bool checked);
     void onBlendModeChanged(int index);
     void onFillModeChanged(int index);
+    void onFillStyleChanged(int index);
     void onSpacingChanged(int value);
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     void onVariantChanged(int index);
@@ -84,6 +85,8 @@ private:
 
     QLabel *m_fillLabel;
     QComboBox *m_fillCombo;
+    QLabel *m_fillStyleLabel;
+    QComboBox *m_fillStyleCombo;   // Solid Color + hatch patterns (Paint.NET Fill Style)
 
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     QLabel *m_variantLabel;

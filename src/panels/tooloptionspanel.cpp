@@ -6,6 +6,7 @@
 #include "tools/magicwandtool.h"
 #include "tools/filltool.h"
 #include "tools/texttool.h"
+#include "core/hatchpatterns.h"
 #include "core/layer.h"
 #include "toolicons.h"
 #include "i18n.h"
@@ -135,6 +136,20 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     layout->addWidget(m_fillCombo);
     connect(m_fillCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onFillModeChanged);
+
+    // --- Fill Style: solid colour + GDI+ hatch patterns (Paint.NET) ---
+    m_fillStyleLabel = new QLabel(TR("Style de remplissage :"));
+    m_fillStyleLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_fillStyleLabel);
+    m_fillStyleCombo = new QComboBox;
+    for (int i = 0; i < Hatch::count(); ++i)
+        m_fillStyleCombo->addItem(TR(Hatch::name(i)));
+    m_fillStyleCombo->setFixedHeight(20);
+    m_fillStyleCombo->setFixedWidth(150);
+    m_fillStyleCombo->setToolTip(TR("Motif de remplissage"));
+    layout->addWidget(m_fillStyleCombo);
+    connect(m_fillStyleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onFillStyleChanged);
 
     // --- Tool-specific variant (shape / gradient type / line style / flood mode) ---
     m_variantLabel = new QLabel(TR("Type :"));
@@ -321,6 +336,10 @@ void ToolOptionsPanel::updateFromTool() {
         m_fillCombo->blockSignals(false);
     }
 
+    m_fillStyleCombo->blockSignals(true);
+    m_fillStyleCombo->setCurrentIndex(qBound(0, m_tool->fillStyle(), m_fillStyleCombo->count() - 1));
+    m_fillStyleCombo->blockSignals(false);
+
     if (auto *text = dynamic_cast<TextTool*>(m_tool)) {
         m_fontCombo->blockSignals(true);
         m_fontCombo->setCurrentFont(QFont(text->fontFamily()));
@@ -345,6 +364,8 @@ void ToolOptionsPanel::updateFromTool() {
     const bool hasSize = isBrushLike || t == ToolType::Shape || t == ToolType::Line
                          || t == ToolType::Recolor;
     const bool hasFill = (t == ToolType::Shape);
+    // Fill Style (solid/hatch) applies to the tools that lay down filled colour.
+    const bool hasFillStyle = (t == ToolType::Brush || t == ToolType::Shape);
     const bool hasOpacity = hasSize || t == ToolType::Fill || t == ToolType::Gradient
                             || t == ToolType::Text;
     const bool hasAA = hasSize || t == ToolType::Fill || t == ToolType::Gradient
@@ -359,6 +380,8 @@ void ToolOptionsPanel::updateFromTool() {
     m_opacitySpin->setVisible(hasOpacity);
     m_fillLabel->setVisible(hasFill);
     m_fillCombo->setVisible(hasFill);
+    m_fillStyleLabel->setVisible(hasFillStyle);
+    m_fillStyleCombo->setVisible(hasFillStyle);
     const bool hasVariant = (t == ToolType::Shape || t == ToolType::Gradient
                              || t == ToolType::Line || t == ToolType::MagicWand
                              || t == ToolType::Fill);
@@ -472,6 +495,10 @@ void ToolOptionsPanel::onVariantChanged(int index) {
     emit toolOptionsChanged();
 }
 
+void ToolOptionsPanel::onFillStyleChanged(int index) {
+    if (m_tool && index >= 0) { m_tool->setFillStyle(index); emit toolOptionsChanged(); }
+}
+
 void ToolOptionsPanel::onFillModeChanged(int index) {
     if (auto *shape = dynamic_cast<ShapeTool*>(m_tool))
         shape->setShapeFill(static_cast<ShapeFill>(qBound(0, index, 2)));
@@ -514,6 +541,8 @@ void ToolOptionsPanel::retranslate() {
     m_toleranceLabel->setText(TR("Tolérance :"));
     m_opacityLabel->setText(TR("Opacité :"));
     m_fillLabel->setText(TR("Remplissage :"));
+    m_fillStyleLabel->setText(TR("Style de remplissage :"));
+    m_fillStyleCombo->setToolTip(TR("Motif de remplissage"));
     m_blendModeLabel->setText(TR("Mode :"));
     m_fontSizeLabel->setText(TR("Taille :"));
     m_fontCombo->setToolTip(TR("Police"));

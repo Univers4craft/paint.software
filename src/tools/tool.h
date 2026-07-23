@@ -103,6 +103,11 @@ public:
     int blendMode() const { return m_blendMode; }
     void setBlendMode(int m) { m_blendMode = m; }
 
+    // Fill Style, like Paint.NET: 0 = Solid Color, 1..N = a GDI+ hatch pattern
+    // (see Hatch::). Used by the brush and shape tools.
+    int fillStyle() const { return m_fillStyle; }
+    void setFillStyle(int s) { m_fillStyle = s; }
+
 protected:
     // Selection-awareness helpers shared by all painting tools.
     // Clips a painter (drawing into a layer image, image space) to the active
@@ -122,4 +127,5 @@ protected:
     int m_tolerance = 50;   // percent, Paint.NET's default
     int m_spacing = 15;
     int m_blendMode = 0;
+    int m_fillStyle = 0;   // 0 = Solid Color; 1..N = a hatch pattern (Hatch::)
 };

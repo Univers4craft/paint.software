@@ -1,6 +1,7 @@
 #include "brushtool.h"
 #include "canvas/canvaswidget.h"
 #include "core/document.h"
+#include "core/hatchpatterns.h"
 #include "core/layer.h"
 #include <QPainter>
 #include <cmath>
@@ -71,6 +72,14 @@ void BrushTool::drawBrushDab(const QPointF &pos, const QColor &color) {
     // Draw the dab opaque; opacity is applied when the buffer is composited.
     QColor c = color;
     c.setAlphaF(1.0);
+
+    if (m_fillStyle > 0) {
+        // Patterned brush (Fill Style): stamp the hatch — pattern lines in the
+        // draw colour, transparent between them — with a hard edge.
+        painter.setBrush(Hatch::brush(m_fillStyle, c, QColor(Qt::transparent)));
+        painter.drawEllipse(pos, m_brushSize / 2.0, m_brushSize / 2.0);
+        return;
+    }
 
     if (m_hardness >= 95) {
         painter.setBrush(c);

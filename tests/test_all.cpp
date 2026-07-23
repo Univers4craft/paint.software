@@ -38,8 +38,11 @@
 #include "tools/colorpickertool.h"
 #include "tools/lassotool.h"
 #include "panels/colorspanel.h"
+#include "panels/tooloptionspanel.h"
 #include "dialogs/resizedialog.h"
 #include <QPushButton>
+#include <QComboBox>
+#include <QLineEdit>
 #include <QDoubleSpinBox>
 #include <QDockWidget>
 #include <QMainWindow>
@@ -1670,6 +1673,40 @@ int main(int argc, char **argv) {
             ++checked;
         }
         CHECK(checked >= 3, "found the print-size and percent decimal fields");
+    }
+
+    SECTION("Brush size: fractional, up to 2000, editable dropdown");
+    {
+        // Paint.NET's brush size is an editable dropdown that accepts decimals
+        // (it antialiases sub-integer sizes) and ranges up to 2000. Ours used to
+        // be an integer spin capped at 500 (#12).
+        BrushTool brush;
+        brush.setBrushSize(6.5);
+        CHECK(std::abs(brush.brushSize() - 6.5) < 1e-9, "brush size keeps a decimal value");
+        brush.setBrushSize(2000);
+        CHECK(std::abs(brush.brushSize() - 2000.0) < 1e-9, "brush size reaches 2000");
+        brush.setBrushSize(5000);
+        CHECK(std::abs(brush.brushSize() - 2000.0) < 1e-9, "brush size clamps above 2000");
+        brush.setBrushSize(0.2);
+        CHECK(std::abs(brush.brushSize() - 1.0) < 1e-9, "brush size clamps below 1");
+
+        // The panel's control: an editable combo with presets, wired so typing a
+        // value commits it to the tool.
+        ToolOptionsPanel panel;
+        panel.setTool(&brush);
+        QComboBox *sizeCombo = nullptr;
+        for (QComboBox *c : panel.findChildren<QComboBox *>()) {
+            if (c->isEditable() && c->findText("2000") >= 0) { sizeCombo = c; break; }
+        }
+        CHECK(sizeCombo != nullptr, "brush size is an editable dropdown listing 2000");
+        if (sizeCombo) {
+            CHECK(sizeCombo->count() >= 50, "the dropdown offers a full range of presets");
+            // Simulate the user typing "12.5" and committing with Enter.
+            sizeCombo->setCurrentText("12.5");
+            emit sizeCombo->lineEdit()->editingFinished();
+            CHECK(std::abs(brush.brushSize() - 12.5) < 1e-9,
+                  "typing a decimal into the dropdown sets the tool's size");
+        }
     }
 
     // ---------- RESULT ----------

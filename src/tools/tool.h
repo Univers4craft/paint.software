@@ -62,8 +62,10 @@ public:
     virtual void drawOverlay(QPainter &painter, const CanvasWidget &canvas) { Q_UNUSED(painter); Q_UNUSED(canvas); }
 
     // Tool options
-    int brushSize() const { return m_brushSize; }
-    void setBrushSize(int size) { m_brushSize = qBound(1, size, 500); }
+    // Brush size is fractional and ranges 1..2000, matching Paint.NET (which
+    // antialiases sub-integer sizes). The drawing code already works in doubles.
+    double brushSize() const { return m_brushSize; }
+    void setBrushSize(double size) { m_brushSize = qBound(1.0, size, 2000.0); }
 
     int hardness() const { return m_hardness; }
     void setHardness(int hardness) { m_hardness = qBound(0, hardness, 100); }
@@ -99,7 +101,7 @@ protected:
     // from the original. Used by tools that rebuild the whole image.
     static QImage maskEditToSelection(Document *doc, const QImage &before, const QImage &after);
 
-    int m_brushSize = 10;
+    double m_brushSize = 10;
     int m_hardness = 100;
     int m_opacity = 100;
     bool m_antialiased = true;

@@ -31,7 +31,8 @@ signals:
     void toolChangeRequested(ToolType type);
 
 private slots:
-    void onBrushSizeChanged(int value);
+    void onBrushSizeChanged();
+    void showBrushSize(double size);   // display helper (compact, no trailing zeros)
     void onHardnessChanged(int value);
     void onOpacityChanged(int value);
     void onToleranceChanged(int value);
@@ -59,7 +60,7 @@ private:
     QComboBox *m_toolCombo;
 
     QLabel *m_brushSizeLabel;
-    QSpinBox *m_brushSizeSpin;
+    QComboBox *m_brushSizeCombo;   // editable: type a size or pick a preset (Paint.NET style)
 
     QLabel *m_hardnessLabel;
     QSlider *m_hardnessSlider;

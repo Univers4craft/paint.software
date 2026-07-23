@@ -58,7 +58,7 @@ void CloneStampTool::mouseReleaseEvent(const QPointF &, QMouseEvent *, CanvasWid
 }
 
 void CloneStampTool::cloneDab(const QPointF &pos, QImage &target, const QImage &source) {
-    int r = std::max(1, m_brushSize / 2);   // size 1 must not give r=0 (÷0 → NaN)
+    int r = std::max(1, static_cast<int>(m_brushSize / 2));   // size 1 must not give r=0 (÷0 → NaN)
     QPointF srcPos = pos + m_offset;
     const double hard = m_hardness / 100.0;
     const double strength = (m_opacity / 100.0) * m_pressure;

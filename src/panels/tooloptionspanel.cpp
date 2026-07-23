@@ -8,6 +8,8 @@
 #include "core/layer.h"
 #include "toolicons.h"
 #include "i18n.h"
+#include <QLineEdit>
+#include <QDoubleValidator>
 
 #include <QHBoxLayout>
 #include <QMouseEvent>
@@ -63,14 +65,29 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     m_brushSizeLabel = new QLabel(TR("Largeur :"));
     m_brushSizeLabel->setStyleSheet("font-size: 11px;");
     layout->addWidget(m_brushSizeLabel);
-    m_brushSizeSpin = new QSpinBox;
-    m_brushSizeSpin->setRange(1, 500);
-    m_brushSizeSpin->setValue(10);
-    m_brushSizeSpin->setFixedWidth(58);
-    m_brushSizeSpin->setFixedHeight(20);
-    m_brushSizeSpin->setToolTip(TR("Largeur du pinceau ( [ et ] pour ajuster )"));
-    layout->addWidget(m_brushSizeSpin);
-    connect(m_brushSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+    // Editable combo: type any size (decimals allowed) or pick a preset, like
+    // Paint.NET. The presets march 1..2000 with widening steps.
+    m_brushSizeCombo = new QComboBox;
+    m_brushSizeCombo->setEditable(true);
+    m_brushSizeCombo->setInsertPolicy(QComboBox::NoInsert);
+    for (int p : {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22,
+                  25, 28, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 125, 150, 175,
+                  200, 225, 250, 275, 300, 350, 400, 450, 500, 600, 700, 800, 900,
+                  1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000})
+        m_brushSizeCombo->addItem(QString::number(p));
+    auto *validator = new QDoubleValidator(1.0, 2000.0, 2, m_brushSizeCombo);
+    validator->setNotation(QDoubleValidator::StandardNotation);
+    m_brushSizeCombo->setValidator(validator);
+    m_brushSizeCombo->setCurrentText("10");
+    m_brushSizeCombo->setFixedWidth(62);
+    m_brushSizeCombo->setFixedHeight(20);
+    m_brushSizeCombo->setToolTip(TR("Largeur du pinceau ( [ et ] pour ajuster )"));
+    layout->addWidget(m_brushSizeCombo);
+    // Commit on Enter / focus-out and on picking a preset — not per keystroke,
+    // so typing "6.5" isn't cut short (same reasoning as the resize dialog).
+    connect(m_brushSizeCombo, QOverload<int>::of(&QComboBox::activated),
+            this, &ToolOptionsPanel::onBrushSizeChanged);
+    connect(m_brushSizeCombo->lineEdit(), &QLineEdit::editingFinished,
             this, &ToolOptionsPanel::onBrushSizeChanged);
 
     // --- Hardness ---
@@ -255,9 +272,7 @@ void ToolOptionsPanel::updateFromTool() {
         }
     }
 
-    m_brushSizeSpin->blockSignals(true);
-    m_brushSizeSpin->setValue(m_tool->brushSize());
-    m_brushSizeSpin->blockSignals(false);
+    showBrushSize(m_tool->brushSize());
 
     m_hardnessSlider->blockSignals(true);
     m_hardnessSlider->setValue(m_tool->hardness());
@@ -319,7 +334,7 @@ void ToolOptionsPanel::updateFromTool() {
                        || t == ToolType::Text;
 
     m_brushSizeLabel->setVisible(hasSize);
-    m_brushSizeSpin->setVisible(hasSize);
+    m_brushSizeCombo->setVisible(hasSize);
     m_hardnessGroup->setVisible(isBrushLike);
     m_spacingGroup->setVisible(isBrushLike);
     m_toleranceGroup->setVisible(hasTolerance);
@@ -345,8 +360,30 @@ void ToolOptionsPanel::updateFromTool() {
     m_antialiasCheck->setVisible(hasAA);
 }
 
-void ToolOptionsPanel::onBrushSizeChanged(int value) {
-    if (m_tool) { m_tool->setBrushSize(value); emit toolOptionsChanged(); }
+void ToolOptionsPanel::onBrushSizeChanged() {
+    if (!m_tool) return;
+    bool ok = false;
+    const double v = m_brushSizeCombo->currentText().toDouble(&ok);
+    if (!ok) {   // reject garbage: snap the field back to the tool's real size
+        showBrushSize(m_tool->brushSize());
+        return;
+    }
+    m_tool->setBrushSize(v);
+    // Reflect any clamping (1..2000) and drop trailing zeros.
+    showBrushSize(m_tool->brushSize());
+    emit toolOptionsChanged();
+}
+
+// Renders a brush size as a compact string: "10", not "10.00"; "6.5" kept.
+void ToolOptionsPanel::showBrushSize(double size) {
+    QString text = QString::number(size, 'f', 2);
+    if (text.contains('.')) {
+        while (text.endsWith('0')) text.chop(1);
+        if (text.endsWith('.')) text.chop(1);
+    }
+    m_brushSizeCombo->blockSignals(true);
+    m_brushSizeCombo->setCurrentText(text);
+    m_brushSizeCombo->blockSignals(false);
 }
 
 void ToolOptionsPanel::onHardnessChanged(int value) {

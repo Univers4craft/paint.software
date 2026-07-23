@@ -185,7 +185,6 @@ int main(int argc, char **argv) {
         BrushTool brush;        testDraw("Brush modifies pixels", &brush);
         PencilTool pencil;      testDraw("Pencil modifies pixels", &pencil);
         FillTool fill;          testDraw("Fill modifies pixels", &fill, false);
-        LineTool line;          testDraw("Line modifies pixels", &line);
         ShapeTool shape;        testDraw("Shape modifies pixels", &shape);
         GradientTool grad;      testDraw("Gradient modifies pixels", &grad);
         // Eraser needs opaque content to erase.
@@ -1732,6 +1731,41 @@ int main(int argc, char **argv) {
             CHECK(std::abs(brush.brushSize() - 12.5) < 1e-9,
                   "typing a decimal into the dropdown sets the tool's size");
         }
+    }
+
+    SECTION("Line / Curve tool: draw, commit, cancel");
+    {
+        // Drawing lays a straight segment but does NOT paint yet — the tool waits
+        // in edit mode with control nubs. Committing (here via deactivate, as a
+        // tool switch would) bakes it in. Escape / no-commit paints nothing.
+        Document doc(64, 64);
+        doc.activeLayer()->clear(Qt::white);
+        doc.setPrimaryColor(Qt::red);
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+
+        LineTool line;
+        QImage before = doc.activeLayer()->image().copy();
+        strokeTool(&line, canvas, QPointF(8, 8), QPointF(56, 56));
+        CHECK(!imagesDiffer(before, doc.activeLayer()->image()),
+              "drawing a line does not paint until committed (edit mode)");
+        line.deactivate(canvas);   // switching away commits
+        CHECK(imagesDiffer(before, doc.activeLayer()->image()),
+              "committing the line paints it into the layer");
+
+        // A fresh line that is never committed leaves the layer untouched.
+        Document doc2(64, 64);
+        doc2.activeLayer()->clear(Qt::white);
+        CanvasWidget canvas2;
+        canvas2.setDocument(&doc2);
+        LineTool line2;
+        QImage before2 = doc2.activeLayer()->image().copy();
+        strokeTool(&line2, canvas2, QPointF(8, 8), QPointF(56, 56));
+        QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        line2.keyPressEvent(&esc, canvas2);
+        line2.deactivate(canvas2);
+        CHECK(!imagesDiffer(before2, doc2.activeLayer()->image()),
+              "Escape cancels the line — nothing is painted");
     }
 
     // ---------- RESULT ----------

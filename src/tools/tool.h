@@ -59,7 +59,17 @@ public:
     // tool shortcuts (B, E, S…) reach the tool as text instead of being eaten by
     // the shortcut system and dropped — that was ~60% of the alphabet.
     virtual bool wantsKeyInput() const { return false; }
+
+    // A tool can claim a specific key (by Qt::Key value) so a global single-key
+    // shortcut doesn't swallow it — e.g. the Line/Curve tool needs Enter/Escape
+    // to commit/cancel, but Enter is also the Deselect shortcut.
+    virtual bool wantsCommitKey(int key) const { Q_UNUSED(key); return false; }
     virtual void drawOverlay(QPainter &painter, const CanvasWidget &canvas) { Q_UNUSED(painter); Q_UNUSED(canvas); }
+
+    // Called just before the tool stops being current (tool switch). A tool that
+    // holds an uncommitted edit (Line/Curve nodes, Text being typed) bakes it in
+    // here so switching away doesn't silently discard the work.
+    virtual void deactivate(CanvasWidget &canvas) { Q_UNUSED(canvas); }
 
     // Tool options
     // Brush size is fractional and ranges 1..2000, matching Paint.NET (which

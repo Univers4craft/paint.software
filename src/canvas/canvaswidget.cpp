@@ -16,9 +16,11 @@ bool CanvasWidget::event(QEvent *event)
     // keyPressEvent, so while the Text tool is typing those letters would trigger
     // a tool switch and never be typed — ~60% of the alphabet vanished. Accepting
     // ShortcutOverride tells Qt to deliver the key as a normal press instead.
-    if (event->type() == QEvent::ShortcutOverride && m_currentTool && m_currentTool->wantsKeyInput()) {
+    if (event->type() == QEvent::ShortcutOverride && m_currentTool) {
         auto *ke = static_cast<QKeyEvent *>(event);
-        if (!(ke->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
+        const bool ctrlAlt = ke->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier);
+        if ((m_currentTool->wantsKeyInput() && !ctrlAlt)
+            || m_currentTool->wantsCommitKey(ke->key())) {
             event->accept();
             return true;
         }
@@ -55,6 +57,8 @@ void CanvasWidget::setDocument(Document *doc) {
 }
 
 void CanvasWidget::setCurrentTool(Tool *tool) {
+    if (m_currentTool && m_currentTool != tool)
+        m_currentTool->deactivate(*this);   // commit any pending edit before switching
     m_currentTool = tool;
 }
 
@@ -431,6 +435,7 @@ void CanvasWidget::mousePressEvent(QMouseEvent *event) {
     }
 
     if (m_currentTool && m_document) {
+        setFocus(Qt::MouseFocusReason);   // so Enter/Escape reach the tool (Line/Curve commit)
         QPointF canvasPos = widgetToCanvas(event->position());
         m_currentTool->mousePressEvent(canvasPos, event, *this);
         m_cacheValid = false;

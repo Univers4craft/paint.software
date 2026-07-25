@@ -1821,6 +1821,40 @@ int main(int argc, char **argv) {
         CHECK(fg > 0 && bg > 0, "a hatch-filled shape shows the pattern (fg + bg inside)");
     }
 
+    SECTION("Marching ants trace only the perimeter (issue #15)");
+    {
+        // A non-rectangular selection's QRegion is many scanline rects. Stroking
+        // each one filled the interior with static; the fix strokes only the
+        // merged outline. Render the canvas and check the selection interior is
+        // clean (no dash pixels away from the boundary).
+        Document doc(80, 80);
+        doc.activeLayer()->clear(Qt::white);
+        QPainterPath blob;
+        blob.addEllipse(QRectF(10, 10, 60, 60));
+        doc.selection().selectPath(blob, SelectionMode::Replace);
+
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+        canvas.resize(120, 120);
+        canvas.show();
+        QCoreApplication::processEvents();
+
+        const QImage shot = canvas.grab().toImage();
+        // Sample a small patch at the ellipse centre, well inside the boundary.
+        const QPointF c = canvas.canvasToWidget(QPointF(40, 40));
+        int dark = 0, total = 0;
+        for (int dy = -6; dy <= 6; ++dy)
+            for (int dx = -6; dx <= 6; ++dx) {
+                const QPoint p = c.toPoint() + QPoint(dx, dy);
+                if (!shot.rect().contains(p)) continue;
+                ++total;
+                if (qGray(shot.pixel(p)) < 128) ++dark;
+            }
+        // With the bug the interior is a dense dash grid; with the fix it's the
+        // clean white layer. Allow a couple of stray antialiased pixels.
+        CHECK(total > 0 && dark <= 2, "selection interior is clean, not filled with static");
+    }
+
     // ---------- RESULT ----------
     printf("\n=====================================\n");
     printf("PASSED: %d   FAILED: %d\n", g_pass, g_fail);

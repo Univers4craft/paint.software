@@ -391,10 +391,14 @@ void CanvasWidget::drawSelectionMarching(QPainter &painter) {
     pen2.setDashPattern(dashPattern);
     pen2.setDashOffset(m_marchingOffset);
 
+    // Build ONE outline for the whole region. Adding each region rect as its own
+    // subpath and stroking it outlined every internal scanline rectangle, which
+    // filled non-rectangular selections (ellipse, lasso) with static instead of
+    // just tracing the perimeter (issue #15). simplified() merges the rects so
+    // only the true boundary is stroked.
     QPainterPath path;
-    for (const QRect &r : region) {
-        path.addRect(r);
-    }
+    path.addRegion(region);
+    path = path.simplified();
 
     painter.setPen(pen1);
     painter.drawPath(path);

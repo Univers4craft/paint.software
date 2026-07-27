@@ -73,19 +73,25 @@ void BrushTool::drawBrushDab(const QPointF &pos, const QColor &color) {
     QColor c = color;
     c.setAlphaF(1.0);
 
+    // Paint.NET model: stylus pressure varies the dab SIZE (0..brush size), not
+    // the opacity. A mouse reports full pressure, so it stamps the full size.
+    const double p = m_pressureSensitivity ? m_pressure : 1.0;
+    const double radius = (m_brushSize / 2.0) * p;
+    if (radius < 0.4) return;   // effectively no pressure = no mark
+
     if (m_fillStyle > 0) {
         // Patterned brush (Fill Style): stamp the hatch — pattern lines in the
         // draw colour, transparent between them — with a hard edge.
         painter.setBrush(Hatch::brush(m_fillStyle, c, QColor(Qt::transparent)));
-        painter.drawEllipse(pos, m_brushSize / 2.0, m_brushSize / 2.0);
+        painter.drawEllipse(pos, radius, radius);
         return;
     }
 
     if (m_hardness >= 95) {
         painter.setBrush(c);
-        painter.drawEllipse(pos, m_brushSize / 2.0, m_brushSize / 2.0);
+        painter.drawEllipse(pos, radius, radius);
     } else {
-        QRadialGradient gradient(pos, m_brushSize / 2.0);
+        QRadialGradient gradient(pos, radius);
         double hardRatio = m_hardness / 100.0;
         gradient.setColorAt(0, c);
         gradient.setColorAt(hardRatio, c);
@@ -93,7 +99,7 @@ void BrushTool::drawBrushDab(const QPointF &pos, const QColor &color) {
         transparent.setAlpha(0);
         gradient.setColorAt(1, transparent);
         painter.setBrush(gradient);
-        painter.drawEllipse(pos, m_brushSize / 2.0, m_brushSize / 2.0);
+        painter.drawEllipse(pos, radius, radius);
     }
 }
 
@@ -106,7 +112,8 @@ void BrushTool::compositeStroke(Document *doc, Layer *layer, const QColor &color
     QImage result = m_beforeImage.copy();
     QPainter painter(&result);
     clipToSelection(painter, doc);
-    painter.setOpacity((m_opacity / 100.0) * m_pressure * (color.alphaF()));
+    // Opacity no longer depends on pressure — pressure drives dab size instead.
+    painter.setOpacity((m_opacity / 100.0) * (color.alphaF()));
     painter.setCompositionMode(brushCompositionMode());
     painter.drawImage(0, 0, m_strokeBuffer);
     painter.end();
@@ -120,7 +127,7 @@ void BrushTool::compositeOverwrite(Document *doc, Layer *layer, const QColor &co
     // every untouched pixel of the layer (the original bug).
     QImage result = m_beforeImage.convertToFormat(QImage::Format_ARGB32);
     const int w = result.width(), h = result.height();
-    const double strength = (m_opacity / 100.0) * m_pressure;
+    const double strength = (m_opacity / 100.0);   // pressure drives size, not opacity
     const int tr = color.red(), tg = color.green(), tb = color.blue();
     const double ta = color.alphaF() * 255.0;
     for (int y = 0; y < h; ++y) {

@@ -1855,6 +1855,41 @@ int main(int argc, char **argv) {
         CHECK(total > 0 && dark <= 2, "selection interior is clean, not filled with static");
     }
 
+    SECTION("Brush pressure varies dab size, not opacity (issue #16)");
+    {
+        auto paintedArea = [](double pressure, bool sensitivity) {
+            Document doc(80, 80);
+            doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::black);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            BrushTool brush;
+            brush.setBrushSize(24);
+            brush.setPressureSensitivity(sensitivity);
+            brush.setPressure(pressure);
+            strokeTool(&brush, canvas, QPointF(15, 40), QPointF(65, 40));
+            const QImage &img = doc.activeLayer()->image();
+            int painted = 0, darkCore = 0;
+            for (int y = 0; y < 80; ++y)
+                for (int x = 0; x < 80; ++x) {
+                    int g = qGray(img.pixel(x, y));
+                    if (g < 250) ++painted;       // any mark
+                    if (g < 40) ++darkCore;       // fully-opaque black
+                }
+            return std::make_pair(painted, darkCore);
+        };
+
+        auto [fullArea, fullCore] = paintedArea(1.0, true);
+        auto [lightArea, lightCore] = paintedArea(0.4, true);
+        CHECK(lightArea > 0 && lightArea < fullArea * 0.7,
+              "lower pressure paints a visibly thinner stroke");
+        // Not opacity: the pixels that ARE painted stay fully opaque black.
+        CHECK(lightCore > 0, "low-pressure stroke is still solid (opacity unchanged)");
+
+        // Sensitivity off: full size regardless of pressure.
+        auto [offArea, offCore] = paintedArea(0.4, false);
+        CHECK(offArea > fullArea * 0.9, "pressure OFF stamps the full brush size");
+    }
+
     // ---------- RESULT ----------
     printf("\n=====================================\n");
     printf("PASSED: %d   FAILED: %d\n", g_pass, g_fail);

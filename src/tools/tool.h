@@ -89,6 +89,12 @@ public:
     double pressure() const { return m_pressure; }
     void setPressure(double p) { m_pressure = qBound(0.0, p, 1.0); }
 
+    // Tablet pressure sensitivity. When on (and a stylus is in use) pressure
+    // scales the dab SIZE between 0 and the brush size, like Paint.NET — not the
+    // opacity. A mouse always reports full pressure, so it draws at full size.
+    bool pressureSensitivity() const { return m_pressureSensitivity; }
+    void setPressureSensitivity(bool on) { m_pressureSensitivity = on; }
+
     // Tolerance is a 0..100 percentage, as in Paint.NET. Tools convert it to the
     // 0..255 colour-distance basis with toleranceDistance().
     int tolerance() const { return m_tolerance; }
@@ -124,6 +130,7 @@ protected:
     int m_opacity = 100;
     bool m_antialiased = true;
     double m_pressure = 1.0;
+    bool m_pressureSensitivity = true;   // stylus pressure varies dab size
     int m_tolerance = 50;   // percent, Paint.NET's default
     int m_spacing = 15;
     int m_blendMode = 0;

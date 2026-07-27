@@ -235,6 +235,13 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     layout->addWidget(m_antialiasCheck);
     connect(m_antialiasCheck, &QCheckBox::toggled, this, &ToolOptionsPanel::onAntialiasToggled);
 
+    m_pressureCheck = new QCheckBox(TR("Pression"));
+    m_pressureCheck->setStyleSheet("font-size: 11px;");
+    m_pressureCheck->setChecked(true);
+    m_pressureCheck->setToolTip(TR("Sensibilité à la pression du stylet (varie la taille du point)"));
+    layout->addWidget(m_pressureCheck);
+    connect(m_pressureCheck, &QCheckBox::toggled, this, &ToolOptionsPanel::onPressureToggled);
+
     layout->addStretch();
 }
 
@@ -326,6 +333,10 @@ void ToolOptionsPanel::updateFromTool() {
     m_antialiasCheck->setChecked(m_tool->antialiased());
     m_antialiasCheck->blockSignals(false);
 
+    m_pressureCheck->blockSignals(true);
+    m_pressureCheck->setChecked(m_tool->pressureSensitivity());
+    m_pressureCheck->blockSignals(false);
+
     m_blendModeCombo->blockSignals(true);
     m_blendModeCombo->setCurrentIndex(m_tool->blendMode());
     m_blendModeCombo->blockSignals(false);
@@ -401,6 +412,7 @@ void ToolOptionsPanel::updateFromTool() {
     m_alignCombo->setVisible(hasText);
 
     m_antialiasCheck->setVisible(hasAA);
+    m_pressureCheck->setVisible(isBrushLike);   // brush / eraser / clone stamp
 }
 
 void ToolOptionsPanel::onBrushSizeChanged() {
@@ -443,6 +455,10 @@ void ToolOptionsPanel::onToleranceChanged(int value) {
 
 void ToolOptionsPanel::onAntialiasToggled(bool checked) {
     if (m_tool) { m_tool->setAntialiased(checked); emit toolOptionsChanged(); }
+}
+
+void ToolOptionsPanel::onPressureToggled(bool checked) {
+    if (m_tool) { m_tool->setPressureSensitivity(checked); emit toolOptionsChanged(); }
 }
 
 void ToolOptionsPanel::onBlendModeChanged(int index) {
@@ -560,6 +576,8 @@ void ToolOptionsPanel::retranslate() {
         m_alignCombo->blockSignals(false);
     }
     m_antialiasCheck->setText(TR("Anticrénelage"));
+    m_pressureCheck->setText(TR("Pression"));
+    m_pressureCheck->setToolTip(TR("Sensibilité à la pression du stylet (varie la taille du point)"));
 
     const int fill = m_fillCombo->currentIndex();
     m_fillCombo->blockSignals(true);

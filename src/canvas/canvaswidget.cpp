@@ -440,6 +440,13 @@ void CanvasWidget::mousePressEvent(QMouseEvent *event) {
 
     if (m_currentTool && m_document) {
         setFocus(Qt::MouseFocusReason);   // so Enter/Escape reach the tool (Line/Curve commit)
+        // A real mouse press (not synthesised from a stylus) always means full
+        // pressure. Without this, a low-pressure stylus stroke left m_pressure
+        // stuck near 0 and the mouse brush kept drawing faint until restart (#16).
+        if (event->source() == Qt::MouseEventNotSynthesized) {
+            m_pressure = 1.0;
+            m_currentTool->setPressure(1.0);
+        }
         QPointF canvasPos = widgetToCanvas(event->position());
         m_currentTool->mousePressEvent(canvasPos, event, *this);
         m_cacheValid = false;

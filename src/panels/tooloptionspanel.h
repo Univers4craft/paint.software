@@ -37,6 +37,7 @@ private slots:
     void onOpacityChanged(int value);
     void onToleranceChanged(int value);
     void onAntialiasToggled(bool checked);
+    void onPressureToggled(bool checked);
     void onBlendModeChanged(int index);
     void onFillModeChanged(int index);
     void onFillStyleChanged(int index);
@@ -82,6 +83,7 @@ private:
     QWidget *m_toleranceGroup;
 
     QCheckBox *m_antialiasCheck;
+    QCheckBox *m_pressureCheck;   // stylus pressure varies dab size (Paint.NET)
 
     QLabel *m_fillLabel;
     QComboBox *m_fillCombo;

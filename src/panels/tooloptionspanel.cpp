@@ -239,7 +239,8 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     m_pressureCheck->setStyleSheet("font-size: 11px;");
     m_pressureCheck->setChecked(true);
     m_pressureCheck->setToolTip(TR("Sensibilité à la pression du stylet (varie la taille du point)"));
-    layout->addWidget(m_pressureCheck);
+    // Paint.NET puts the Pressure toggle right after Brush size (before Hardness).
+    layout->insertWidget(layout->indexOf(m_brushSizeCombo) + 1, m_pressureCheck);
     connect(m_pressureCheck, &QCheckBox::toggled, this, &ToolOptionsPanel::onPressureToggled);
 
     layout->addStretch();
@@ -412,7 +413,8 @@ void ToolOptionsPanel::updateFromTool() {
     m_alignCombo->setVisible(hasText);
 
     m_antialiasCheck->setVisible(hasAA);
-    m_pressureCheck->setVisible(isBrushLike);   // brush / eraser / clone stamp
+    // Shown only when a tablet has been detected (Paint.NET), on brush-like tools.
+    m_pressureCheck->setVisible(isBrushLike && m_tabletPresent);
 }
 
 void ToolOptionsPanel::onBrushSizeChanged() {
@@ -459,6 +461,12 @@ void ToolOptionsPanel::onAntialiasToggled(bool checked) {
 
 void ToolOptionsPanel::onPressureToggled(bool checked) {
     if (m_tool) { m_tool->setPressureSensitivity(checked); emit toolOptionsChanged(); }
+}
+
+void ToolOptionsPanel::setTabletPresent(bool present) {
+    if (m_tabletPresent == present) return;
+    m_tabletPresent = present;
+    if (m_tool) setTool(m_tool);   // refresh which controls are visible
 }
 
 void ToolOptionsPanel::onBlendModeChanged(int index) {

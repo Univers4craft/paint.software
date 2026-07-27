@@ -66,6 +66,7 @@ signals:
     void deleteSelectionRequested();
     void fillSelectionRequested();
     void selectionContextMenuRequested(const QPoint &globalPos);
+    void tabletDetected();   // emitted the first time a stylus is used
 
 protected:
     bool event(QEvent *event) override;   // claim ShortcutOverride while a tool types
@@ -115,4 +116,5 @@ private:
 
     // Tablet pressure
     double m_pressure = 1.0;
+    bool m_tabletSeen = false;   // a stylus event has arrived at least once
 };

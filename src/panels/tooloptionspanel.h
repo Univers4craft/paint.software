@@ -23,6 +23,9 @@ public:
     explicit ToolOptionsPanel(QWidget *parent = nullptr);
 
     void setTool(Tool *tool);
+    // Reveals the Pressure toggle once a graphics tablet has been detected, as
+    // Paint.NET does (the control is hidden until then).
+    void setTabletPresent(bool present);
     // Re-applies all visible labels in the current language.
     void retranslate();
 
@@ -84,6 +87,7 @@ private:
 
     QCheckBox *m_antialiasCheck;
     QCheckBox *m_pressureCheck;   // stylus pressure varies dab size (Paint.NET)
+    bool m_tabletPresent = false;   // Pressure toggle is shown only once a tablet is seen
 
     QLabel *m_fillLabel;
     QComboBox *m_fillCombo;

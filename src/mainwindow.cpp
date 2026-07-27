@@ -175,6 +175,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_canvas, &CanvasWidget::deleteSelectionRequested, this, &MainWindow::deleteSelectionContents);
     connect(m_canvas, &CanvasWidget::fillSelectionRequested, this, &MainWindow::fillSelection);
     connect(m_canvas, &CanvasWidget::selectionContextMenuRequested, this, &MainWindow::showSelectionContextMenu);
+    connect(m_canvas, &CanvasWidget::tabletDetected, this, [this]() {
+        if (m_toolOptionsPanel) m_toolOptionsPanel->setTabletPresent(true);
+    });
     connect(m_document, &Document::documentChanged, this, &MainWindow::updateTitle);
     connect(m_document, &Document::documentChanged, this, &MainWindow::updateImageList);
     connect(m_document, &Document::sizeChanged, this, [this](int w, int h) {

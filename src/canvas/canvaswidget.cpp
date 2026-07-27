@@ -564,5 +564,9 @@ void CanvasWidget::tabletEvent(QTabletEvent *event) {
     m_pressure = event->pressure() > 0.0 ? event->pressure() : m_pressure;
     if (m_currentTool)
         m_currentTool->setPressure(m_pressure);
+    if (!m_tabletSeen) {
+        m_tabletSeen = true;
+        emit tabletDetected();   // reveal the Pressure toggle, like Paint.NET
+    }
     event->ignore();
 }

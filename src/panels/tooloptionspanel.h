@@ -44,6 +44,7 @@ private slots:
     void onBlendModeChanged(int index);
     void onFillModeChanged(int index);
     void onFillStyleChanged(int index);
+    void onCornerSizeChanged(int value);
     void onSpacingChanged(int value);
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     void onVariantChanged(int index);
@@ -93,6 +94,9 @@ private:
     QComboBox *m_fillCombo;
     QLabel *m_fillStyleLabel;
     QComboBox *m_fillStyleCombo;   // Solid Color + hatch patterns (Paint.NET Fill Style)
+
+    QLabel *m_cornerLabel;
+    QSpinBox *m_cornerSpin;   // rounded-rectangle corner radius (shape tool only)
 
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     QLabel *m_variantLabel;

@@ -1912,6 +1912,86 @@ int main(int argc, char **argv) {
               "eraser: lower pressure clears a thinner track (size, not opacity)");
     }
 
+    SECTION("Shape tool: Shift constrains 1:1, Alt draws from centre, corner size");
+    {
+        // Strokes a filled rectangle from a->b with the given modifiers held, then
+        // returns the bounding box of the painted (black) pixels.
+        auto bbox = [](Qt::KeyboardModifiers mods, QPointF a, QPointF b) {
+            Document doc(120, 120);
+            doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::black);
+            doc.setSecondaryColor(Qt::black);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            ShapeTool sh;
+            sh.setShapeType(ShapeType::Rectangle);
+            sh.setShapeFill(ShapeFill::Filled);
+            QMouseEvent e1(QEvent::MouseButtonPress, a, a, Qt::LeftButton, Qt::LeftButton, mods);
+            sh.mousePressEvent(a, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, b, b, Qt::NoButton, Qt::LeftButton, mods);
+            sh.mouseMoveEvent(b, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, b, b, Qt::LeftButton, Qt::NoButton, mods);
+            sh.mouseReleaseEvent(b, &e3, canvas);
+            const QImage &img = doc.activeLayer()->image();
+            int minx = 999, miny = 999, maxx = -1, maxy = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                    if (qGray(img.pixel(x, y)) < 128) {
+                        minx = qMin(minx, x); maxx = qMax(maxx, x);
+                        miny = qMin(miny, y); maxy = qMax(maxy, y);
+                    }
+            return std::make_tuple(minx, miny, maxx, maxy);
+        };
+        auto approx = [](int v, int target) { return std::abs(v - target) <= 2; };
+
+        // Plain drag: 40 wide, 20 tall from (20,20).
+        {
+            auto [x0, y0, x1, y1] = bbox(Qt::NoModifier, QPointF(20, 20), QPointF(60, 40));
+            CHECK(approx(x0,20) && approx(y0,20) && approx(x1,60) && approx(y1,40),
+                  "plain drag draws the raw drag rectangle");
+        }
+        // Shift: constrain to a square using the larger extent (40), toward cursor.
+        {
+            auto [x0, y0, x1, y1] = bbox(Qt::ShiftModifier, QPointF(20, 20), QPointF(60, 40));
+            CHECK(approx(x0,20) && approx(y0,20) && approx(x1,60) && approx(y1,60),
+                  "Shift forces a 1:1 square growing toward the cursor");
+        }
+        // Alt: start point is the centre; extend equally to both sides.
+        {
+            auto [x0, y0, x1, y1] = bbox(Qt::AltModifier, QPointF(60, 60), QPointF(80, 70));
+            CHECK(approx(x0,40) && approx(y0,50) && approx(x1,80) && approx(y1,70),
+                  "Alt centres the shape on the start point");
+        }
+        // Shift+Alt: centred square (extent 20 on the larger axis).
+        {
+            auto [x0, y0, x1, y1] = bbox(Qt::ShiftModifier | Qt::AltModifier,
+                                         QPointF(60, 60), QPointF(80, 70));
+            CHECK(approx(x0,40) && approx(y0,40) && approx(x1,80) && approx(y1,80),
+                  "Shift+Alt draws a centred 1:1 square");
+        }
+
+        // Corner size clamps to 0..200 and is honoured by the rounded rectangle:
+        // a larger radius rounds away more of the corner pixels.
+        ShapeTool cs;
+        cs.setCornerSize(-5);  CHECK(cs.cornerSize() == 0,   "corner size clamps at 0");
+        cs.setCornerSize(999); CHECK(cs.cornerSize() == 200, "corner size clamps at 200");
+        auto cornerFilled = [](int radius) {
+            Document doc(80, 80);
+            doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::black);
+            doc.setSecondaryColor(Qt::black);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            ShapeTool sh;
+            sh.setShapeType(ShapeType::RoundedRectangle);
+            sh.setShapeFill(ShapeFill::Filled);
+            sh.setCornerSize(radius);
+            strokeTool(&sh, canvas, QPointF(10, 10), QPointF(70, 70));
+            // Is the top-left corner pixel (just inside the bbox) painted?
+            return qGray(doc.activeLayer()->image().pixel(12, 12)) < 128;
+        };
+        CHECK(cornerFilled(0),  "corner size 0 leaves a sharp (filled) corner");
+        CHECK(!cornerFilled(30), "a large corner size rounds the corner away");
+    }
+
     // ---------- RESULT ----------
     printf("\n=====================================\n");
     printf("PASSED: %d   FAILED: %d\n", g_pass, g_fail);

@@ -18,9 +18,10 @@ void ShapeTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, Ca
     m_useRight = (event->button() == Qt::RightButton);
 }
 
-void ShapeTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWidget &canvas) {
+void ShapeTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (!m_drawing) return;
     m_currentPos = canvasPos;
+    m_modifiers = event->modifiers();
 
     // Live preview: restore + draw
     auto *layer = canvas.document()->activeLayer();
@@ -43,19 +44,42 @@ void ShapeTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWi
         painter.setBrush((m_shapeFill == ShapeFill::Outline) ? Qt::NoBrush : fill);
         painter.setOpacity(m_opacity / 100.0);
 
-        QRectF rect(m_startPos, m_currentPos);
-        drawShape(painter, rect.normalized());
+        drawShape(painter, effectiveRect());
     }
 }
 
-void ShapeTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *, CanvasWidget &canvas) {
+void ShapeTool::mouseReleaseEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (!m_drawing) return;
     m_drawing = false;
     m_currentPos = canvasPos;
+    m_modifiers = event->modifiers();
     canvas.document()->pushImageEdit(canvas.document()->activeLayerIndex(), m_beforeImage, "Shape");
 }
 
 void ShapeTool::drawOverlay(QPainter &, const CanvasWidget &) {}
+
+// Builds the drag rectangle, honouring the held modifiers:
+//   Shift  -> constrain to 1:1 (square / circle), keeping the drag direction
+//   Alt    -> treat m_startPos as the centre, extending equally in all directions
+//   Shift+Alt -> centred square / circle
+QRectF ShapeTool::effectiveRect() const {
+    double dx = m_currentPos.x() - m_startPos.x();
+    double dy = m_currentPos.y() - m_startPos.y();
+
+    if (m_modifiers & Qt::ShiftModifier) {
+        // Force a square extent equal to the larger absolute drag, preserving
+        // the sign so the shape still grows toward the cursor.
+        const double side = qMax(std::abs(dx), std::abs(dy));
+        dx = (dx < 0) ? -side : side;
+        dy = (dy < 0) ? -side : side;
+    }
+
+    if (m_modifiers & Qt::AltModifier) {
+        // Start point is the centre: extend equally to both sides.
+        return QRectF(m_startPos.x() - dx, m_startPos.y() - dy, 2 * dx, 2 * dy).normalized();
+    }
+    return QRectF(m_startPos.x(), m_startPos.y(), dx, dy).normalized();
+}
 
 void ShapeTool::drawShape(QPainter &painter, const QRectF &rect) {
     switch (m_shapeType) {
@@ -66,7 +90,7 @@ void ShapeTool::drawShape(QPainter &painter, const QRectF &rect) {
         painter.drawEllipse(rect);
         break;
     case ShapeType::RoundedRectangle:
-        painter.drawRoundedRect(rect, 10, 10);
+        painter.drawRoundedRect(rect, m_cornerSize, m_cornerSize);
         break;
     case ShapeType::Triangle: {
         QPainterPath path;

@@ -217,6 +217,7 @@ const QHash<QString, QString> &table() {
         {"Tolérance :", "Tolerance:"},
         {"Opacité :", "Opacity:"},
         {"Remplissage :", "Fill:"},
+        {"Coin :", "Corner:"},
         {"Mode :", "Mode:"},
         {"Taille :", "Size:"},
         {"Police", "Font"},

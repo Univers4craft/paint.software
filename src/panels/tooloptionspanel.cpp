@@ -151,6 +151,20 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     connect(m_fillStyleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onFillStyleChanged);
 
+    // --- Corner radius (rounded rectangle shape only) ---
+    m_cornerLabel = new QLabel(TR("Coin :"));
+    m_cornerLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_cornerLabel);
+    m_cornerSpin = new QSpinBox;
+    m_cornerSpin->setRange(0, 200);
+    m_cornerSpin->setValue(10);
+    m_cornerSpin->setKeyboardTracking(false);   // commit on Enter/focus-out, not per digit
+    m_cornerSpin->setFixedWidth(52);
+    m_cornerSpin->setFixedHeight(20);
+    layout->addWidget(m_cornerSpin);
+    connect(m_cornerSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &ToolOptionsPanel::onCornerSizeChanged);
+
     // --- Tool-specific variant (shape / gradient type / line style / flood mode) ---
     m_variantLabel = new QLabel(TR("Type :"));
     m_variantLabel->setStyleSheet("font-size: 11px;");
@@ -346,6 +360,9 @@ void ToolOptionsPanel::updateFromTool() {
         m_fillCombo->blockSignals(true);
         m_fillCombo->setCurrentIndex(static_cast<int>(shape->shapeFill()));
         m_fillCombo->blockSignals(false);
+        m_cornerSpin->blockSignals(true);
+        m_cornerSpin->setValue(shape->cornerSize());
+        m_cornerSpin->blockSignals(false);
     }
 
     m_fillStyleCombo->blockSignals(true);
@@ -394,6 +411,12 @@ void ToolOptionsPanel::updateFromTool() {
     m_fillCombo->setVisible(hasFill);
     m_fillStyleLabel->setVisible(hasFillStyle);
     m_fillStyleCombo->setVisible(hasFillStyle);
+    // Corner radius: only the Shape tool, and only when it's a rounded rectangle.
+    bool hasCorner = false;
+    if (auto *shape = dynamic_cast<ShapeTool*>(m_tool))
+        hasCorner = (shape->shapeType() == ShapeType::RoundedRectangle);
+    m_cornerLabel->setVisible(hasCorner);
+    m_cornerSpin->setVisible(hasCorner);
     const bool hasVariant = (t == ToolType::Shape || t == ToolType::Gradient
                              || t == ToolType::Line || t == ToolType::MagicWand
                              || t == ToolType::Fill);
@@ -506,9 +529,13 @@ void ToolOptionsPanel::populateVariantCombo() {
 
 void ToolOptionsPanel::onVariantChanged(int index) {
     if (index < 0) return;
-    if (auto *shape = dynamic_cast<ShapeTool*>(m_tool))
+    if (auto *shape = dynamic_cast<ShapeTool*>(m_tool)) {
         shape->setShapeType(static_cast<ShapeType>(index));
-    else if (auto *grad = dynamic_cast<GradientTool*>(m_tool))
+        // The corner-radius control appears only for the rounded rectangle.
+        const bool hasCorner = (shape->shapeType() == ShapeType::RoundedRectangle);
+        m_cornerLabel->setVisible(hasCorner);
+        m_cornerSpin->setVisible(hasCorner);
+    } else if (auto *grad = dynamic_cast<GradientTool*>(m_tool))
         grad->setGradientType(static_cast<GradientType>(index));
     else if (auto *line = dynamic_cast<LineTool*>(m_tool))
         line->setLineStyle(static_cast<LineTool::LineStyle>(index));
@@ -521,6 +548,13 @@ void ToolOptionsPanel::onVariantChanged(int index) {
 
 void ToolOptionsPanel::onFillStyleChanged(int index) {
     if (m_tool && index >= 0) { m_tool->setFillStyle(index); emit toolOptionsChanged(); }
+}
+
+void ToolOptionsPanel::onCornerSizeChanged(int value) {
+    if (auto *shape = dynamic_cast<ShapeTool*>(m_tool)) {
+        shape->setCornerSize(value);
+        emit toolOptionsChanged();
+    }
 }
 
 void ToolOptionsPanel::onFillModeChanged(int index) {
@@ -567,6 +601,7 @@ void ToolOptionsPanel::retranslate() {
     m_fillLabel->setText(TR("Remplissage :"));
     m_fillStyleLabel->setText(TR("Style de remplissage :"));
     m_fillStyleCombo->setToolTip(TR("Motif de remplissage"));
+    m_cornerLabel->setText(TR("Coin :"));
     m_blendModeLabel->setText(TR("Mode :"));
     m_fontSizeLabel->setText(TR("Taille :"));
     m_fontCombo->setToolTip(TR("Police"));

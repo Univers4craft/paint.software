@@ -21,8 +21,14 @@ public:
     ShapeFill shapeFill() const { return m_shapeFill; }
     void setShapeFill(ShapeFill f) { m_shapeFill = f; }
 
+    int cornerSize() const { return m_cornerSize; }
+    void setCornerSize(int s) { m_cornerSize = qBound(0, s, 200); }
+
 private:
     void drawShape(QPainter &painter, const QRectF &rect);
+    // Applies the Shift (1:1 constrain) and Alt (draw-from-centre) modifiers to
+    // m_startPos/m_currentPos, so the live preview and the commit share one rect.
+    QRectF effectiveRect() const;
 
     ShapeType m_shapeType = ShapeType::Rectangle;
     ShapeFill m_shapeFill = ShapeFill::Outline;
@@ -30,4 +36,6 @@ private:
     QPointF m_startPos, m_currentPos;
     QImage m_beforeImage;
     bool m_useRight = false;
+    Qt::KeyboardModifiers m_modifiers = Qt::NoModifier;   // captured during the drag
+    int m_cornerSize = 10;   // rounded-rectangle corner radius (0..200)
 };

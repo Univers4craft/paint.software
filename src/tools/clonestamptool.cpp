@@ -61,10 +61,15 @@ void CloneStampTool::mouseReleaseEvent(const QPointF &, QMouseEvent *, CanvasWid
 }
 
 void CloneStampTool::cloneDab(const QPointF &pos, QImage &target, const QImage &source) {
-    int r = std::max(1, static_cast<int>(m_brushSize / 2));   // size 1 must not give r=0 (÷0 → NaN)
+    // Paint.NET stylus model: pressure varies the stamp SIZE (0..brush size),
+    // not opacity. A mouse reports full pressure, so its stamps are full size.
+    const double p = m_pressureSensitivity ? m_pressure : 1.0;
+    const double scaledRadius = (m_brushSize / 2.0) * p;
+    if (scaledRadius < 0.4) return;   // effectively no pressure = no mark
+    int r = std::max(1, static_cast<int>(scaledRadius));   // size 1 must not give r=0 (÷0 → NaN)
     QPointF srcPos = pos + m_offset;
     const double hard = m_hardness / 100.0;
-    const double strength = (m_opacity / 100.0) * m_pressure;
+    const double strength = (m_opacity / 100.0);
 
     for (int dy = -r; dy <= r; ++dy) {
         for (int dx = -r; dx <= r; ++dx) {

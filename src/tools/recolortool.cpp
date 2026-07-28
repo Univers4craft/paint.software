@@ -45,7 +45,9 @@ void RecolorTool::recolorAt(const QPointF &pos, CanvasWidget &canvas) {
     QImage &img = doc->activeLayer()->image();
     const QColor target = m_targetColor;
     const QColor primary = m_replaceColor;
-    int radius = m_brushSize / 2;
+    // Paint.NET stylus model: pressure varies the tip SIZE (0..brush size), not
+    // the blend strength. A mouse reports full pressure, so its tip is full size.
+    int radius = int((m_brushSize / 2.0) * (m_pressureSensitivity ? m_pressure : 1.0));
     int tol = toleranceDistance();
     QPoint center = toPixelPos(pos);
 
@@ -62,9 +64,9 @@ void RecolorTool::recolorAt(const QPointF &pos, CanvasWidget &canvas) {
                        std::abs(pixel.blue() - target.blue());
             if (diff <= tol * 3) {
                 double factor = (tol > 0 && diff > 0) ? 1.0 - (double)diff / (tol * 3.0) : 1.0;
-                // Tool opacity (and pen pressure) scale how strongly the new
-                // colour replaces the old one.
-                factor *= (m_opacity / 100.0) * m_pressure;
+                // Tool opacity scales how strongly the new colour replaces the
+                // old one (pressure varies the tip size, not the blend).
+                factor *= (m_opacity / 100.0);
                 int r = qBound(0, (int)(primary.red() * factor + pixel.red() * (1 - factor)), 255);
                 int g = qBound(0, (int)(primary.green() * factor + pixel.green() * (1 - factor)), 255);
                 int b = qBound(0, (int)(primary.blue() * factor + pixel.blue() * (1 - factor)), 255);

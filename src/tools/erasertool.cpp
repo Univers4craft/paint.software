@@ -57,6 +57,12 @@ void EraserTool::eraseStroke(const QPointF &from, const QPointF &to) {
 }
 
 void EraserTool::eraseDab(const QPointF &pos) {
+    // Paint.NET stylus model: pressure varies the dab SIZE (0..brush size), not
+    // opacity. A mouse reports full pressure, so its dabs are full size.
+    const double p = m_pressureSensitivity ? m_pressure : 1.0;
+    const double radius = (m_brushSize / 2.0) * p;
+    if (radius < 0.4) return;   // effectively no pressure = no mark
+
     QPainter painter(&m_strokeBuffer);
     if (m_antialiased) painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(Qt::NoPen);
@@ -66,14 +72,14 @@ void EraserTool::eraseDab(const QPointF &pos) {
     if (m_hardness >= 95) {
         painter.setBrush(QColor(0, 0, 0, 255));
     } else {
-        QRadialGradient g(pos, m_brushSize / 2.0);
+        QRadialGradient g(pos, radius);
         const double hardRatio = m_hardness / 100.0;
         g.setColorAt(0, QColor(0, 0, 0, 255));
         g.setColorAt(hardRatio, QColor(0, 0, 0, 255));
         g.setColorAt(1, QColor(0, 0, 0, 0));
         painter.setBrush(g);
     }
-    painter.drawEllipse(pos, m_brushSize / 2.0, m_brushSize / 2.0);
+    painter.drawEllipse(pos, radius, radius);
 }
 
 void EraserTool::compositeErase(Document *doc, Layer *layer) {
@@ -83,7 +89,7 @@ void EraserTool::compositeErase(Document *doc, Layer *layer) {
     // Both buttons erase to transparency; the right button scales the erase by
     // the secondary colour's alpha, matching Paint.NET (left uses the primary
     // colour's alpha — full here, since the eraser ignores primary RGB).
-    double strength = (m_opacity / 100.0) * m_pressure;
+    double strength = (m_opacity / 100.0);
     if (m_toSecondary)
         strength *= doc->secondaryColor().alphaF();
     painter.setOpacity(strength);

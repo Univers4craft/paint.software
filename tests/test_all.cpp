@@ -1888,6 +1888,28 @@ int main(int argc, char **argv) {
         // Sensitivity off: full size regardless of pressure.
         auto [offArea, offCore] = paintedArea(0.4, false);
         CHECK(offArea > fullArea * 0.9, "pressure OFF stamps the full brush size");
+
+        // The same size-not-opacity model now applies to the Eraser: lower
+        // pressure clears a thinner track.
+        auto erasedArea = [](double pressure) {
+            Document doc(80, 80);
+            doc.activeLayer()->clear(Qt::black);   // opaque, so erasing shows
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            EraserTool er;
+            er.setBrushSize(24);
+            er.setPressureSensitivity(true);
+            er.setPressure(pressure);
+            strokeTool(&er, canvas, QPointF(15, 40), QPointF(65, 40));
+            const QImage &img = doc.activeLayer()->image();
+            int cleared = 0;
+            for (int y = 0; y < 80; ++y)
+                for (int x = 0; x < 80; ++x)
+                    if (qAlpha(img.pixel(x, y)) < 128) ++cleared;
+            return cleared;
+        };
+        const int erFull = erasedArea(1.0), erLight = erasedArea(0.4);
+        CHECK(erLight > 0 && erLight < erFull * 0.7,
+              "eraser: lower pressure clears a thinner track (size, not opacity)");
     }
 
     // ---------- RESULT ----------

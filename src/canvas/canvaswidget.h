@@ -117,4 +117,5 @@ private:
     // Tablet pressure
     double m_pressure = 1.0;
     bool m_tabletSeen = false;   // a stylus event has arrived at least once
+    bool m_penInContact = false; // stylus tip is touching (pressure > 0), not just hovering
 };

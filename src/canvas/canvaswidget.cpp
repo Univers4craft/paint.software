@@ -438,6 +438,12 @@ void CanvasWidget::mousePressEvent(QMouseEvent *event) {
         }
     }
 
+    // A stylus that is only hovering (tip not touching) still makes Qt synthesise
+    // mouse events — including button presses from the barrel button. Drop those
+    // so hovering never paints (issue #17). Real mouse presses are never gated.
+    if (event->source() != Qt::MouseEventNotSynthesized && !m_penInContact)
+        return;
+
     if (m_currentTool && m_document) {
         setFocus(Qt::MouseFocusReason);   // so Enter/Escape reach the tool (Line/Curve commit)
         // A real mouse press (not synthesised from a stylus) always means full
@@ -466,6 +472,12 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *event) {
 
     QPointF canvasPos = widgetToCanvas(event->position());
     emit cursorPositionChanged(canvasPos.toPoint());
+
+    // A hovering stylus (tip not touching) must not draw, even if it synthesises
+    // move events with a button held (issue #17). The cursor position above is
+    // still updated so the status bar tracks the hover.
+    if (event->source() != Qt::MouseEventNotSynthesized && !m_penInContact)
+        return;
 
     if (m_currentTool && m_document) {
         m_currentTool->mouseMoveEvent(canvasPos, event, *this);
@@ -568,5 +580,18 @@ void CanvasWidget::tabletEvent(QTabletEvent *event) {
         m_tabletSeen = true;
         emit tabletDetected();   // reveal the Pressure toggle, like Paint.NET
     }
+
+    // Track whether the tip is actually touching. The pen draws ONLY on contact;
+    // while it hovers (pressure 0) — even with a barrel/right button held — it
+    // must not paint. mousePressEvent/mouseMoveEvent drop the synthesised mouse
+    // events that arrive during a hover (issue #17, and the stray dab at the
+    // start of a stroke). A tip release ends contact.
+    if (event->type() == QEvent::TabletRelease)
+        m_penInContact = false;
+    else
+        m_penInContact = event->pressure() > 0.0;
+
+    // Ignore so Qt still synthesises the compatibility mouse events that drive
+    // the tools; the contact gate above decides whether they actually draw.
     event->ignore();
 }

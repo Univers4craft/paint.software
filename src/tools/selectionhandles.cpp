@@ -3,6 +3,7 @@
 
 #include <QPainter>
 #include <algorithm>
+#include <cmath>
 
 namespace SelHandles {
 
@@ -66,6 +67,86 @@ QRect resized(const QRect &rect, Handle handle, const QPointF &canvasPos) {
     return normalized;
 }
 
+QRect resized(const QRect &rect, Handle handle, const QPointF &canvasPos,
+              Qt::KeyboardModifiers mods) {
+    // No modifier: keep the exact original path (edge-anchored setTop/setRight…).
+    if (!(mods & (Qt::ShiftModifier | Qt::AltModifier)) || handle == Handle::None)
+        return resized(rect, handle, canvasPos);
+
+    // Which edges the handle moves, per axis.
+    int sx = 0, sy = 0;
+    switch (handle) {
+    case Handle::TopLeft:     sx = -1; sy = -1; break;
+    case Handle::Top:         sx =  0; sy = -1; break;
+    case Handle::TopRight:    sx =  1; sy = -1; break;
+    case Handle::Right:       sx =  1; sy =  0; break;
+    case Handle::BottomRight: sx =  1; sy =  1; break;
+    case Handle::Bottom:      sx =  0; sy =  1; break;
+    case Handle::BottomLeft:  sx = -1; sy =  1; break;
+    case Handle::Left:        sx = -1; sy =  0; break;
+    default: return resized(rect, handle, canvasPos);
+    }
+
+    const QRectF r(rect);
+    const double oldW = r.width(), oldH = r.height();
+    const QPointF centre = r.center();
+    const double minSize = 2.0;
+
+    double newW = oldW, newH = oldH;
+    QPointF newCentre = centre;
+
+    if (mods & Qt::AltModifier) {
+        // Symmetric about the centre: half-extents follow the mouse.
+        if (sx) newW = 2.0 * std::abs(canvasPos.x() - centre.x());
+        if (sy) newH = 2.0 * std::abs(canvasPos.y() - centre.y());
+        if ((mods & Qt::ShiftModifier) && sx && sy) {   // keep aspect (corners only)
+            const double f = std::max(newW / std::max(oldW, minSize),
+                                      newH / std::max(oldH, minSize));
+            newW = oldW * f;
+            newH = oldH * f;
+        }
+    } else {
+        // Anchor the opposite edge/corner; the dragged handle follows the mouse.
+        const QPointF anchor(centre.x() - sx * oldW / 2.0, centre.y() - sy * oldH / 2.0);
+        if (sx) newW = std::abs(canvasPos.x() - anchor.x());
+        if (sy) newH = std::abs(canvasPos.y() - anchor.y());
+        if ((mods & Qt::ShiftModifier) && sx && sy) {   // keep aspect (corners only)
+            const double f = std::max(newW / std::max(oldW, minSize),
+                                      newH / std::max(oldH, minSize));
+            newW = oldW * f;
+            newH = oldH * f;
+        }
+        newW = std::max(newW, minSize);
+        newH = std::max(newH, minSize);
+        newCentre = QPointF(anchor.x() + sx * newW / 2.0, anchor.y() + sy * newH / 2.0);
+    }
+
+    newW = std::max(newW, minSize);
+    newH = std::max(newH, minSize);
+    QRect out = QRectF(newCentre.x() - newW / 2.0, newCentre.y() - newH / 2.0,
+                       newW, newH).toRect();
+    if (out.width() < 2) out.setWidth(2);
+    if (out.height() < 2) out.setHeight(2);
+    return out;
+}
+
+bool inRotationZone(const QRect &rect, const QPointF &canvasPos, double zoom) {
+    if (rect.isEmpty()) return false;
+    if (QRectF(rect).contains(canvasPos)) return false;   // inside → move
+    // A band a fixed number of screen pixels wide, beyond the handles.
+    const double band = std::max(28.0 / std::max(zoom, 0.01), radius(rect, zoom) * 3.0);
+    const QRectF outer = QRectF(rect).adjusted(-band, -band, band, band);
+    return outer.contains(canvasPos);
+}
+
+QTransform rotationAbout(const QPointF &center, double angleDeg) {
+    QTransform t;
+    t.translate(center.x(), center.y());
+    t.rotate(angleDeg);
+    t.translate(-center.x(), -center.y());
+    return t;
+}
+
 QVector<QRectF> rects(const QRect &rect, double zoom) {
     const qreal r = radius(rect, zoom);
     QVector<QRectF> out;
@@ -86,6 +167,20 @@ void setScaledMask(Selection &sel, const QImage &originalMask,
                               .convertToFormat(QImage::Format_Grayscale8);
     QPainter p(&newMask);
     p.drawImage(to.topLeft(), scaled);
+    p.end();
+    sel.setMaskImage(newMask);
+}
+
+void setRotatedMask(Selection &sel, const QImage &originalMask,
+                    const QPointF &center, double angleDeg, bool smooth) {
+    if (originalMask.isNull()) return;
+
+    QImage newMask(originalMask.size(), QImage::Format_Grayscale8);
+    newMask.fill(0);
+    QPainter p(&newMask);
+    if (smooth) p.setRenderHint(QPainter::SmoothPixmapTransform);
+    p.setTransform(rotationAbout(center, angleDeg));
+    p.drawImage(0, 0, originalMask);
     p.end();
     sel.setMaskImage(newMask);
 }

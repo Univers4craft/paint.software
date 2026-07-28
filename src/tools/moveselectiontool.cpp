@@ -5,16 +5,20 @@
 #include "selectionhandles.h"
 #include <QPainter>
 #include <QMouseEvent>
+#include <QTransform>
 #include <algorithm>
+#include <cmath>
 
 void MoveSelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
-    if (event->button() != Qt::LeftButton) return;
+    if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
 
     Document *doc = canvas.document();
     if (!doc || !doc->selection().hasSelection()) return;
 
     m_originalSelectionRect = doc->selection().boundingRect();
     m_previewSelectionRect = m_originalSelectionRect;
+    m_rotCenter = QRectF(m_originalSelectionRect).center();
+    m_angle = 0.0;
     m_activeHandle = SelHandles::at(m_originalSelectionRect, canvasPos, canvas.zoom());
 
     // Resizing a handle only rescales the marquee (this tool never moves pixels),
@@ -26,6 +30,16 @@ void MoveSelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *e
         return;
     }
 
+    // Just outside the box (or a right drag) rotates the marquee about its centre.
+    if (event->button() == Qt::RightButton
+        || SelHandles::inRotationZone(m_originalSelectionRect, canvasPos, canvas.zoom())) {
+        m_rotating = true;
+        m_originalSelectionMask = doc->selection().mask().copy();
+        m_rotStartAngle = std::atan2(canvasPos.y() - m_rotCenter.y(),
+                                     canvasPos.x() - m_rotCenter.x()) * 180.0 / M_PI;
+        return;
+    }
+
     if (doc->selection().isSelected(canvasPos.x(), canvasPos.y())) {
         m_moving = true;
         m_lastPos = canvasPos;
@@ -33,8 +47,23 @@ void MoveSelectionTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *e
 }
 
 void MoveSelectionTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
+    if (m_rotating && (event->buttons() & (Qt::LeftButton | Qt::RightButton))) {
+        Document *doc = canvas.document();
+        if (!doc) return;
+        double deg = std::atan2(canvasPos.y() - m_rotCenter.y(),
+                                canvasPos.x() - m_rotCenter.x()) * 180.0 / M_PI - m_rotStartAngle;
+        if (event->modifiers() & Qt::ShiftModifier)
+            deg = std::round(deg / 15.0) * 15.0;
+        m_angle = deg;
+        SelHandles::setRotatedMask(doc->selection(), m_originalSelectionMask, m_rotCenter, m_angle, false);
+        emit doc->selectionChanged();
+        canvas.update();
+        return;
+    }
+
     if (m_resizing && (event->buttons() & Qt::LeftButton)) {
-        m_previewSelectionRect = SelHandles::resized(m_originalSelectionRect, m_activeHandle, canvasPos);
+        m_previewSelectionRect = SelHandles::resized(m_originalSelectionRect, m_activeHandle,
+                                                     canvasPos, event->modifiers());
         canvas.update();
         return;
     }
@@ -54,7 +83,21 @@ void MoveSelectionTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *ev
 }
 
 void MoveSelectionTool::mouseReleaseEvent(const QPointF &, QMouseEvent *event, CanvasWidget &canvas) {
-    if (event->button() != Qt::LeftButton) return;
+    if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
+
+    if (m_rotating) {
+        Document *doc = canvas.document();
+        if (doc) {
+            // Redo the rotation with a smooth mask now the angle is final.
+            SelHandles::setRotatedMask(doc->selection(), m_originalSelectionMask,
+                                       m_rotCenter, m_angle, true);
+            emit doc->selectionChanged();
+            canvas.update();
+        }
+        m_rotating = false;
+        m_activeHandle = SelHandles::Handle::None;
+        return;
+    }
 
     if (m_resizing) {
         Document *doc = canvas.document();
@@ -80,6 +123,27 @@ void MoveSelectionTool::mouseReleaseEvent(const QPointF &, QMouseEvent *event, C
 void MoveSelectionTool::drawOverlay(QPainter &painter, const CanvasWidget &canvas) {
     auto *doc = canvas.document();
     if (!doc || !doc->selection().hasSelection()) return;
+
+    if (m_rotating) {
+        if (m_originalSelectionRect.isEmpty()) return;
+        const QTransform rot = SelHandles::rotationAbout(m_rotCenter, m_angle);
+        painter.save();
+        painter.setRenderHint(QPainter::Antialiasing);
+        QPolygonF box;
+        for (const QPointF &c : { QPointF(m_originalSelectionRect.topLeft()),
+                                  QPointF(m_originalSelectionRect.topRight()),
+                                  QPointF(m_originalSelectionRect.bottomRight()),
+                                  QPointF(m_originalSelectionRect.bottomLeft()) })
+            box << canvas.canvasToWidget(rot.map(c));
+        painter.setPen(QPen(QColor(30, 30, 30), 1, Qt::DashLine));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPolygon(box);
+        painter.setPen(QPen(Qt::white, 1));
+        painter.setBrush(QColor(35, 120, 255));
+        painter.drawEllipse(canvas.canvasToWidget(m_rotCenter), 4, 4);
+        painter.restore();
+        return;
+    }
 
     QRect rect = m_resizing ? m_previewSelectionRect : doc->selection().boundingRect();
     if (rect.isEmpty()) return;

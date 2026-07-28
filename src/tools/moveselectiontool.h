@@ -21,10 +21,17 @@ public:
 private:
     bool m_moving = false;
     bool m_resizing = false;
+    bool m_rotating = false;
     SelHandles::Handle m_activeHandle = SelHandles::Handle::None;
     QPointF m_startPos;
     QPointF m_lastPos;
     QRect m_originalSelectionRect;
     QRect m_previewSelectionRect;
     QImage m_originalSelectionMask;
+
+    // Rotation of the marquee about the box centre (Paint.NET): drag just outside
+    // the box, or with the right button. Shift snaps to 15°.
+    QPointF m_rotCenter;
+    double m_rotStartAngle = 0.0;
+    double m_angle = 0.0;
 };

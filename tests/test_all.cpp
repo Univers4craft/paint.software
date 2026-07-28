@@ -1721,6 +1721,124 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- MOVE TOOL: ROTATION + MODIFIER KEYS ----------
+    SECTION("Move tool: rotation and modifier keys");
+    {
+        auto redBounds = [](const QImage &img) {
+            int x0 = INT_MAX, y0 = INT_MAX, x1 = -1, y1 = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    if (c.red() > 150 && c.green() < 90 && c.blue() < 90 && c.alpha() > 100) {
+                        x0 = std::min(x0, x); y0 = std::min(y0, y);
+                        x1 = std::max(x1, x); y1 = std::max(y1, y);
+                    }
+                }
+            return x1 < 0 ? QRect() : QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+        };
+        auto countRed = [](const QImage &img) {
+            int n = 0;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    if (c.red() > 150 && c.green() < 90 && c.blue() < 90 && c.alpha() > 100) ++n;
+                }
+            return n;
+        };
+        auto near = [](int a, int b) { return std::abs(a - b) <= 4; };
+
+        // Ctrl at press moves a COPY: the original square stays where it was and a
+        // second one appears at the drop point.
+        {
+            Document doc(200, 200);
+            doc.activeLayer()->clear(Qt::white);
+            { QPainter p(&doc.activeLayer()->image()); p.fillRect(QRect(40, 40, 40, 40), Qt::red); }
+            doc.selection().selectRect(QRect(40, 40, 40, 40));
+            CanvasWidget canvas; canvas.setDocument(&doc); canvas.setZoom(1.0);
+            MoveTool tool;
+            const QPointF from(60, 60), to(160, 160);   // press inside, drag far away
+            QMouseEvent e1(QEvent::MouseButtonPress, from, from, Qt::LeftButton, Qt::LeftButton, Qt::ControlModifier);
+            tool.mousePressEvent(from, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::ControlModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::ControlModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+            const QImage &img = doc.activeLayer()->image();
+            CHECK(img.pixelColor(60, 60).red() > 150, "Ctrl-move leaves the original pixels in place");
+            CHECK(img.pixelColor(160, 160).red() > 150, "Ctrl-move drops a copy at the new spot");
+        }
+
+        // Shift while resizing a corner keeps the original aspect ratio (square →
+        // square) even when the drag is lopsided.
+        {
+            Document doc(200, 200);
+            doc.activeLayer()->clear(Qt::white);
+            { QPainter p(&doc.activeLayer()->image()); p.fillRect(QRect(40, 40, 40, 40), Qt::red); }
+            doc.selection().selectRect(QRect(40, 40, 40, 40));
+            CanvasWidget canvas; canvas.setDocument(&doc); canvas.setZoom(1.0);
+            MoveTool tool;
+            const QPointF grab(79, 79), to(139, 110);   // bottom-right corner, uneven drag
+            QMouseEvent e1(QEvent::MouseButtonPress, grab, grab, Qt::LeftButton, Qt::LeftButton, Qt::ShiftModifier);
+            tool.mousePressEvent(grab, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::ShiftModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::ShiftModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+            const QRect r = redBounds(doc.activeLayer()->image());
+            CHECK(near(r.width(), r.height()), "Shift-resize keeps the aspect ratio square");
+        }
+
+        // Alt while resizing grows symmetrically about the centre: the opposite edge
+        // moves out too, so the centre of the square stays put.
+        {
+            Document doc(200, 200);
+            doc.activeLayer()->clear(Qt::white);
+            { QPainter p(&doc.activeLayer()->image()); p.fillRect(QRect(60, 60, 40, 40), Qt::red); }
+            doc.selection().selectRect(QRect(60, 60, 40, 40));
+            const QPoint centreBefore = QRect(60, 60, 40, 40).center();
+            CanvasWidget canvas; canvas.setDocument(&doc); canvas.setZoom(1.0);
+            MoveTool tool;
+            const QPointF grab(99, 79), to(120, 79);   // right edge dragged out
+            QMouseEvent e1(QEvent::MouseButtonPress, grab, grab, Qt::LeftButton, Qt::LeftButton, Qt::AltModifier);
+            tool.mousePressEvent(grab, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::AltModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::AltModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+            const QRect r = redBounds(doc.activeLayer()->image());
+            CHECK(r.left() < 60, "Alt-resize also moves the opposite (left) edge outward");
+            CHECK(near(r.center().x(), centreBefore.x()), "Alt-resize keeps the centre fixed");
+        }
+
+        // Right-drag rotates the content about the box centre: a 90°-ish rotation of
+        // a wide rectangle makes the bounding box taller than it is wide.
+        {
+            Document doc(200, 200);
+            doc.activeLayer()->clear(Qt::white);
+            { QPainter p(&doc.activeLayer()->image()); p.fillRect(QRect(60, 90, 80, 20), Qt::red); }
+            doc.selection().selectRect(QRect(60, 90, 80, 20));
+            const QRect before = redBounds(doc.activeLayer()->image());
+            const int redBefore = countRed(doc.activeLayer()->image());
+            CanvasWidget canvas; canvas.setDocument(&doc); canvas.setZoom(1.0);
+            MoveTool tool;
+            const QPointF c = QRectF(QRect(60, 90, 80, 20)).center();
+            const QPointF from = c + QPointF(60, 0);   // to the right of centre
+            const QPointF to   = c + QPointF(0, 60);   // straight below → ~90° turn
+            QMouseEvent e1(QEvent::MouseButtonPress, from, from, Qt::RightButton, Qt::RightButton, Qt::NoModifier);
+            tool.mousePressEvent(from, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::RightButton, Qt::NoModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::RightButton, Qt::NoButton, Qt::NoModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+            const QRect after = redBounds(doc.activeLayer()->image());
+            CHECK(before.width() > before.height(), "sanity: started wide");
+            CHECK(after.height() > after.width(), "rotation turns the wide box tall");
+            CHECK(std::abs(countRed(doc.activeLayer()->image()) - redBefore) < redBefore / 2,
+                  "rotation preserves roughly the same amount of content");
+            CHECK(doc.history().canUndo(), "a rotation is undoable");
+        }
+    }
+
     // ---------- CANVAS VIEW CENTRING ----------
     SECTION("Canvas view centring");
     {

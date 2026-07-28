@@ -20,7 +20,20 @@ void PencilTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, C
     QImage &img = layer->image();
     if (img.rect().contains(m_lastPos)
         && selectionAllows(canvas.document(), m_lastPos.x(), m_lastPos.y()))
-        img.setPixelColor(m_lastPos, color);
+        plot(img, m_lastPos.x(), m_lastPos.y(), color);
+}
+
+void PencilTool::plot(QImage &img, int x, int y, const QColor &color) {
+    // Normal (0) and Overwrite (14) both replace the pixel outright — matching
+    // the pencil's original direct opaque write with the source colour's alpha.
+    if (m_blendMode == 0 || m_blendMode == 14) {
+        img.setPixelColor(x, y, color);
+        return;
+    }
+    // Other modes: composite the single pixel through the shared blend mapping.
+    QPainter p(&img);
+    p.setCompositionMode(Tool::compositionModeFor(m_blendMode));
+    p.fillRect(QRect(x, y, 1, 1), color);
 }
 
 void PencilTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
@@ -42,7 +55,7 @@ void PencilTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, Ca
     while (true) {
         if (x0 >= 0 && x0 < layer->image().width() && y0 >= 0 && y0 < layer->image().height()
             && selectionAllows(canvas.document(), x0, y0))
-            layer->image().setPixelColor(x0, y0, color);
+            plot(layer->image(), x0, y0, color);
         if (x0 == x1 && y0 == y1) break;
         int e2 = 2 * err;
         if (e2 >= dy) { err += dy; x0 += sx; }

@@ -229,6 +229,70 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- RECOLOR & PENCIL OPTIONS ----------
+    SECTION("Recolor and Pencil expose Paint.NET options");
+    {
+        // Recolor, Sampling = Secondary colour: only pixels matching the
+        // secondary colour are recolored, not arbitrary clicked colours.
+        {
+            Document doc(64, 64); doc.activeLayer()->clear(Qt::white);
+            // Paint the left half green; leave the right half white.
+            { QPainter p(&doc.activeLayer()->image()); p.fillRect(0, 0, 32, 64, Qt::green); }
+            doc.setPrimaryColor(Qt::red);
+            doc.setSecondaryColor(Qt::green);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            RecolorTool rc;
+            rc.setSampleSecondary(true);   // target = secondary (green)
+            rc.setTolerance(0);            // exact match only
+            rc.setBrushSize(300);          // one dab covers the whole canvas
+            strokeTool(&rc, canvas, QPointF(10, 10), QPointF(50, 50));
+            QColor greenSide = doc.activeLayer()->image().pixelColor(10, 32);
+            QColor whiteSide = doc.activeLayer()->image().pixelColor(50, 32);
+            CHECK(greenSide.red() > 200 && greenSide.green() < 60,
+                  "Recolor Sampling=Secondary: green pixels become the primary (red)");
+            CHECK(whiteSide == QColor(Qt::white),
+                  "Recolor Sampling=Secondary: non-secondary (white) pixels are untouched");
+        }
+
+        // Recolor Hardness: a soft tip changes edge pixels less than the centre.
+        {
+            Document doc(64, 64); doc.activeLayer()->clear(Qt::green);
+            doc.setPrimaryColor(Qt::red);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            RecolorTool rc;
+            rc.setSampleSecondary(false);   // target = clicked pixel (green)
+            rc.setHardness(0);              // maximum soft edge
+            rc.setBrushSize(40);            // radius 20
+            QMouseEvent e = pressEv(QPointF(32, 32));
+            rc.mousePressEvent(QPointF(32, 32), &e, canvas);
+            QMouseEvent r = releaseEv(QPointF(32, 32));
+            rc.mouseReleaseEvent(QPointF(32, 32), &r, canvas);
+            int centreRed = doc.activeLayer()->image().pixelColor(32, 32).red();
+            int edgeRed   = doc.activeLayer()->image().pixelColor(32, 49).red();  // near the rim
+            CHECK(centreRed > edgeRed + 40,
+                  "Recolor Hardness: centre is recolored more strongly than the edge");
+        }
+
+        // Pencil blend mode: Multiply differs from Normal on a mid-grey ground.
+        {
+            const QColor grey(128, 128, 128);
+            auto pencilStroke = [&](int blendMode) {
+                Document doc(64, 64); doc.activeLayer()->clear(grey);
+                doc.setPrimaryColor(grey);
+                CanvasWidget canvas; canvas.setDocument(&doc);
+                PencilTool pencil;
+                pencil.setBlendMode(blendMode);
+                strokeTool(&pencil, canvas, QPointF(10, 10), QPointF(40, 40));
+                return doc.activeLayer()->image().pixelColor(10, 10);
+            };
+            QColor normal   = pencilStroke(0);    // Normal
+            QColor multiply = pencilStroke(1);    // Multiply
+            CHECK(normal == grey, "Pencil Normal writes the source colour directly");
+            CHECK(multiply.red() < normal.red(),
+                  "Pencil Multiply darkens the pixel, differing from Normal");
+        }
+    }
+
     // ---------- GRADIENT TOOL OPTIONS ----------
     SECTION("Gradient tool exposes Paint.NET options");
     {

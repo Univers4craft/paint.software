@@ -13,15 +13,21 @@ void RecolorTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, 
     m_drawing = true;
     m_beforeImage = layer->image().copy();
 
-    // Sample the colour under the initial click as the recolor target. Paint in
-    // the primary colour with the left button, the secondary with the right —
-    // Paint.NET reverses the roles of the two colours on right-click.
+    // Decide the recolor target. Paint in the primary colour with the left
+    // button, the secondary with the right — Paint.NET reverses the roles of the
+    // two colours on right-click.
     const bool rightButton = event->button() == Qt::RightButton;
-    QPoint c = toPixelPos(canvasPos);
-    QImage &img = layer->image();
     auto *doc = canvas.document();
-    m_targetColor = img.rect().contains(c) ? img.pixelColor(c)
-                                           : (rightButton ? doc->primaryColor() : doc->secondaryColor());
+    if (m_sampleSecondary) {
+        // Target is a fixed colour (the secondary), not the clicked pixel. On
+        // right-click the roles reverse: target becomes the primary.
+        m_targetColor = rightButton ? doc->primaryColor() : doc->secondaryColor();
+    } else {
+        QPoint c = toPixelPos(canvasPos);
+        QImage &img = layer->image();
+        m_targetColor = img.rect().contains(c) ? img.pixelColor(c)
+                                               : (rightButton ? doc->primaryColor() : doc->secondaryColor());
+    }
     m_replaceColor = rightButton ? doc->secondaryColor() : doc->primaryColor();
     recolorAt(canvasPos, canvas);
 }
@@ -50,10 +56,14 @@ void RecolorTool::recolorAt(const QPointF &pos, CanvasWidget &canvas) {
     int radius = int((m_brushSize / 2.0) * (m_pressureSensitivity ? m_pressure : 1.0));
     int tol = toleranceDistance();
     QPoint center = toPixelPos(pos);
+    // Soft-edge falloff, like the paintbrush: full strength out to hardRatio of
+    // the radius, then fading to zero at the rim. Hardness 100 = a hard tip.
+    const double hardRatio = m_hardness / 100.0;
 
     for (int dy = -radius; dy <= radius; ++dy) {
         for (int dx = -radius; dx <= radius; ++dx) {
-            if (dx * dx + dy * dy > radius * radius) continue;
+            const int dist2 = dx * dx + dy * dy;
+            if (dist2 > radius * radius) continue;
             int px = center.x() + dx, py = center.y() + dy;
             if (px < 0 || px >= img.width() || py < 0 || py >= img.height()) continue;
             if (!selectionAllows(doc, px, py)) continue;
@@ -67,6 +77,15 @@ void RecolorTool::recolorAt(const QPointF &pos, CanvasWidget &canvas) {
                 // Tool opacity scales how strongly the new colour replaces the
                 // old one (pressure varies the tip size, not the blend).
                 factor *= (m_opacity / 100.0);
+                // Radial soft-edge falloff scales the replacement strength.
+                if (radius > 0 && hardRatio < 1.0) {
+                    const double norm = std::sqrt((double)dist2) / radius;   // 0..1
+                    double falloff = 1.0;
+                    if (norm > hardRatio)
+                        falloff = (norm >= 1.0) ? 0.0
+                                                : 1.0 - (norm - hardRatio) / (1.0 - hardRatio);
+                    factor *= falloff;
+                }
                 int r = qBound(0, (int)(primary.red() * factor + pixel.red() * (1 - factor)), 255);
                 int g = qBound(0, (int)(primary.green() * factor + pixel.green() * (1 - factor)), 255);
                 int b = qBound(0, (int)(primary.blue() * factor + pixel.blue() * (1 - factor)), 255);

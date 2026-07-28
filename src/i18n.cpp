@@ -417,6 +417,9 @@ const QHash<QString, QString> &table() {
         {"Échantillonnage :", "Sampling:"},
         {"Calque", "Layer"},
         {"Image", "Image"},
+        {"Cible :", "Target:"},
+        {"Pixel cliqué", "Clicked pixel"},
+        {"Couleur secondaire", "Secondary colour"},
 
         // ---- Tool descriptions (tooltips) ----
         {"Sélectionne une zone rectangulaire à modifier.",

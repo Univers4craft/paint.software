@@ -43,6 +43,7 @@ private slots:
     void onPressureToggled(bool checked);
     void onBlendModeChanged(int index);
     void onSamplingChanged(int index);
+    void onRecolorTargetChanged(int index);
     void onFillModeChanged(int index);
     void onFillStyleChanged(int index);
     // Gradient tool: repeat mode + transparency toggle.
@@ -117,6 +118,10 @@ private:
     // Sampling source (Fill / Magic Wand): Image (composite) vs Layer (active).
     QLabel *m_samplingLabel;
     QComboBox *m_samplingCombo;
+
+    // Recolor target (Paint.NET "Sampling"): clicked pixel vs secondary colour.
+    QLabel *m_recolorTargetLabel;
+    QComboBox *m_recolorTargetCombo;
 
     // Text tool controls.
     QFontComboBox *m_fontCombo;

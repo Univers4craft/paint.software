@@ -6,6 +6,7 @@
 #include "tools/magicwandtool.h"
 #include "tools/filltool.h"
 #include "tools/texttool.h"
+#include "tools/recolortool.h"
 #include "core/hatchpatterns.h"
 #include "core/layer.h"
 #include "toolicons.h"
@@ -221,6 +222,19 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     connect(m_samplingCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onSamplingChanged);
 
+    // --- Recolor target (Paint.NET "Sampling"): clicked pixel vs secondary colour ---
+    m_recolorTargetLabel = new QLabel(TR("Cible :"));
+    m_recolorTargetLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_recolorTargetLabel);
+    m_recolorTargetCombo = new QComboBox;
+    // Index 0 = clicked pixel (sampled), 1 = secondary colour (fixed).
+    m_recolorTargetCombo->addItems({TR("Pixel cliqué"), TR("Couleur secondaire")});
+    m_recolorTargetCombo->setFixedHeight(20);
+    m_recolorTargetCombo->setFixedWidth(140);
+    layout->addWidget(m_recolorTargetCombo);
+    connect(m_recolorTargetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onRecolorTargetChanged);
+
     // --- Text tool: font family, size, and B / I / U ---
     m_fontCombo = new QFontComboBox;
     m_fontCombo->setFixedHeight(20);
@@ -398,6 +412,13 @@ void ToolOptionsPanel::updateFromTool() {
         m_samplingCombo->blockSignals(false);
     }
 
+    // Recolor target: reflect the active Recolor tool.
+    if (auto *rc = dynamic_cast<RecolorTool*>(m_tool)) {
+        m_recolorTargetCombo->blockSignals(true);
+        m_recolorTargetCombo->setCurrentIndex(rc->sampleSecondary() ? 1 : 0);
+        m_recolorTargetCombo->blockSignals(false);
+    }
+
     if (auto *shape = dynamic_cast<ShapeTool*>(m_tool)) {
         m_fillCombo->blockSignals(true);
         m_fillCombo->setCurrentIndex(static_cast<int>(shape->shapeFill()));
@@ -451,9 +472,11 @@ void ToolOptionsPanel::updateFromTool() {
     const bool hasAA = hasSize || t == ToolType::Fill || t == ToolType::Gradient
                        || t == ToolType::Text;
 
+    // Recolor gets a soft-edge Hardness control, like the brush-like tools.
+    const bool hasHardness = isBrushLike || t == ToolType::Recolor;
     m_brushSizeLabel->setVisible(hasSize);
     m_brushSizeCombo->setVisible(hasSize);
-    m_hardnessGroup->setVisible(isBrushLike);
+    m_hardnessGroup->setVisible(hasHardness);
     m_spacingGroup->setVisible(isBrushLike);
     m_toleranceGroup->setVisible(hasTolerance);
     m_opacityLabel->setVisible(hasOpacity);
@@ -478,8 +501,9 @@ void ToolOptionsPanel::updateFromTool() {
     m_gradientRepeatLabel->setVisible(isGradient);
     m_gradientRepeatCombo->setVisible(isGradient);
     m_gradientTransparencyCheck->setVisible(isGradient);
-    // Blend mode: the brush and (Paint.NET) the paint bucket.
-    const bool hasBlendMode = (t == ToolType::Brush || t == ToolType::Fill);
+    // Blend mode: the brush, the paint bucket, and (now) the pencil.
+    const bool hasBlendMode = (t == ToolType::Brush || t == ToolType::Fill
+                               || t == ToolType::Pencil);
     m_blendModeLabel->setVisible(hasBlendMode);
     m_blendModeCombo->setVisible(hasBlendMode);
 
@@ -487,6 +511,11 @@ void ToolOptionsPanel::updateFromTool() {
     const bool hasSampling = (t == ToolType::Fill || t == ToolType::MagicWand);
     m_samplingLabel->setVisible(hasSampling);
     m_samplingCombo->setVisible(hasSampling);
+
+    // Recolor target (clicked pixel vs secondary colour): Recolor only.
+    const bool hasRecolorTarget = (t == ToolType::Recolor);
+    m_recolorTargetLabel->setVisible(hasRecolorTarget);
+    m_recolorTargetCombo->setVisible(hasRecolorTarget);
 
     const bool hasText = (t == ToolType::Text);
     m_fontCombo->setVisible(hasText);
@@ -565,6 +594,14 @@ void ToolOptionsPanel::onSamplingChanged(int index) {
     if (auto *fill = dynamic_cast<FillTool*>(m_tool)) fill->setSampleImage(sampleImage);
     else if (auto *wand = dynamic_cast<MagicWandTool*>(m_tool)) wand->setSampleImage(sampleImage);
     emit toolOptionsChanged();
+}
+
+void ToolOptionsPanel::onRecolorTargetChanged(int index) {
+    // Index 0 = clicked pixel (sampled), 1 = secondary colour (fixed).
+    if (auto *rc = dynamic_cast<RecolorTool*>(m_tool)) {
+        rc->setSampleSecondary(index == 1);
+        emit toolOptionsChanged();
+    }
 }
 
 void ToolOptionsPanel::populateVariantCombo() {
@@ -705,6 +742,15 @@ void ToolOptionsPanel::retranslate() {
         m_samplingCombo->addItems({TR("Image"), TR("Calque")});
         m_samplingCombo->setCurrentIndex(s < 0 ? 0 : s);
         m_samplingCombo->blockSignals(false);
+    }
+    m_recolorTargetLabel->setText(TR("Cible :"));
+    {
+        const int rt = m_recolorTargetCombo->currentIndex();
+        m_recolorTargetCombo->blockSignals(true);
+        m_recolorTargetCombo->clear();
+        m_recolorTargetCombo->addItems({TR("Pixel cliqué"), TR("Couleur secondaire")});
+        m_recolorTargetCombo->setCurrentIndex(rt < 0 ? 0 : rt);
+        m_recolorTargetCombo->blockSignals(false);
     }
     m_fontSizeLabel->setText(TR("Taille :"));
     m_fontCombo->setToolTip(TR("Police"));

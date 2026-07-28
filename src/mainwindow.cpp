@@ -104,6 +104,10 @@
 #include <QLabel>
 #include <QPainter>
 #include <QGridLayout>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QDialogButtonBox>
 #include <QToolButton>
 #include <QFileInfo>
 #include <QSizePolicy>
@@ -507,6 +511,7 @@ void MainWindow::createMenus() {
     auto *flipLayerMenu = layersMenu->addMenu(TR("Retourner le calque"));
     flipLayerMenu->addAction(TR("&Horizontalement"), this, &MainWindow::flipActiveLayerHorizontal);
     flipLayerMenu->addAction(TR("&Verticalement"), this, &MainWindow::flipActiveLayerVertical);
+    layersMenu->addAction(TR("Rotation / Zoom du calque..."), this, &MainWindow::showRotateZoomLayerDialog);
     layersMenu->addSeparator();
     auto *layerPropertiesAction = layersMenu->addAction(TR("&Propriétés du calque..."), this, &MainWindow::showLayerPropertiesDialog);
     auto *toggleLayerVisibilityAction = layersMenu->addAction(TR("Basculer la visibilité"), this, &MainWindow::toggleActiveLayerVisibility);
@@ -1457,6 +1462,9 @@ void MainWindow::createDockPanels() {
     m_layersDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
     m_layersPanel = new LayersPanel;
     m_layersPanel->setDocument(m_document);
+    // Double-clicking a layer row opens the Layer Properties dialog.
+    connect(m_layersPanel, &LayersPanel::layerDoubleClicked, this,
+            &MainWindow::showLayerPropertiesDialog);
     m_layersDock->setWidget(m_layersPanel);
     addDockWidget(Qt::RightDockWidgetArea, m_layersDock);
     connect(m_layersDock, &QDockWidget::dockLocationChanged, this, [this](Qt::DockWidgetArea) {
@@ -2077,6 +2085,71 @@ void MainWindow::flipActiveLayerVertical() {
     QImage before = layer->image().copy();
     layer->setImage(layer->image().mirrored(false, true));
     m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Retourner le calque");
+    m_canvas->updateCanvas();
+}
+
+void MainWindow::showRotateZoomLayerDialog() {
+    if (!m_document) return;
+    auto *layer = m_document->activeLayer();
+    if (!layer || layer->isLocked()) return;
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(TR("Rotation / Zoom du calque"));
+    auto *form = new QVBoxLayout(&dlg);
+
+    // Angle slider: -180..180 degrees.
+    auto *angleLabel = new QLabel(TR("Angle : 0°"), &dlg);
+    auto *angleSlider = new QSlider(Qt::Horizontal, &dlg);
+    angleSlider->setRange(-180, 180);
+    angleSlider->setValue(0);
+    form->addWidget(angleLabel);
+    form->addWidget(angleSlider);
+
+    // Scale slider: 10..400 %.
+    auto *scaleLabel = new QLabel(TR("Échelle : 100 %"), &dlg);
+    auto *scaleSlider = new QSlider(Qt::Horizontal, &dlg);
+    scaleSlider->setRange(10, 400);
+    scaleSlider->setValue(100);
+    form->addWidget(scaleLabel);
+    form->addWidget(scaleSlider);
+
+    connect(angleSlider, &QSlider::valueChanged, angleLabel, [angleLabel](int v) {
+        angleLabel->setText(TR("Angle : ") + QString::number(v) + "°");
+    });
+    connect(scaleSlider, &QSlider::valueChanged, scaleLabel, [scaleLabel](int v) {
+        scaleLabel->setText(TR("Échelle : ") + QString::number(v) + " %");
+    });
+
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    form->addWidget(buttons);
+
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    const double angle = angleSlider->value();
+    const double scale = scaleSlider->value() / 100.0;
+    if (angle == 0.0 && scale == 1.0) return;   // nothing to do
+
+    const QImage before = layer->image().copy();
+    const QSize sz = before.size();
+
+    // Rotate + scale about the layer centre, keeping the canvas dimensions so the
+    // result stays aligned with the rest of the document (one undo entry).
+    QImage result(sz, QImage::Format_ARGB32_Premultiplied);
+    result.fill(Qt::transparent);
+    {
+        QPainter p(&result);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+        p.translate(sz.width() / 2.0, sz.height() / 2.0);
+        p.rotate(angle);
+        p.scale(scale, scale);
+        p.translate(-sz.width() / 2.0, -sz.height() / 2.0);
+        p.drawImage(0, 0, before);
+    }
+    layer->setImage(result);
+    m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Rotation / Zoom du calque");
     m_canvas->updateCanvas();
 }
 

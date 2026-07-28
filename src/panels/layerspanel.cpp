@@ -14,6 +14,7 @@
 #include <QInputDialog>
 #include <QMenu>
 #include <QMessageBox>
+#include <QApplication>
 
 namespace {
 // Neutral "ink" colour and layer-fill colour that adapt to the active theme so
@@ -185,6 +186,15 @@ LayersPanel::LayersPanel(QWidget *parent) : QWidget(parent) {
         if (m_document) m_document->setEditAllLayers(checked);
     });
     connect(m_layerList, &QListWidget::currentRowChanged, this, &LayersPanel::onLayerClicked);
+    // Double-clicking a layer row opens the Layer Properties dialog (MainWindow
+    // owns the dialog, so relay the active layer index via a signal).
+    connect(m_layerList, &QListWidget::itemDoubleClicked, this,
+            [this](QListWidgetItem *item) {
+        if (!m_document || !item) return;
+        const int index = item->data(Qt::UserRole).toInt();
+        m_document->setActiveLayer(index);
+        emit layerDoubleClicked(index);
+    });
     connect(m_layerList, &QListWidget::itemChanged, this, [this](QListWidgetItem *item) {
         if (!m_document) return;
         int row = m_layerList->row(item);
@@ -425,15 +435,20 @@ void LayersPanel::mergeWithChoice(int topIndex) {
 void LayersPanel::onMoveUp() {
     if (!m_document) return;
     int idx = m_document->activeLayerIndex();
-    if (idx < m_document->layerCount() - 1)
-        m_document->moveLayer(idx, idx + 1);
+    const int top = m_document->layerCount() - 1;
+    if (idx >= top) return;
+    // Ctrl+click sends the layer all the way to the top instead of one step.
+    const bool toTop = QApplication::keyboardModifiers() & Qt::ControlModifier;
+    m_document->moveLayer(idx, toTop ? top : idx + 1);
 }
 
 void LayersPanel::onMoveDown() {
     if (!m_document) return;
     int idx = m_document->activeLayerIndex();
-    if (idx > 0)
-        m_document->moveLayer(idx, idx - 1);
+    if (idx <= 0) return;
+    // Ctrl+click sends the layer all the way to the bottom instead of one step.
+    const bool toBottom = QApplication::keyboardModifiers() & Qt::ControlModifier;
+    m_document->moveLayer(idx, toBottom ? 0 : idx - 1);
 }
 
 void LayersPanel::onLayerClicked(int row) {

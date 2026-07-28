@@ -409,6 +409,63 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- BLEND MODE FORMULAS (Paint.NET fidelity) ----------
+    SECTION("Blend mode formulas match Paint.NET");
+    {
+        // Composite a known top colour over a known base and check the result of
+        // the modes the task called out: Xor, Overlay, Color Burn, Color Dodge.
+        const QColor base(90, 90, 90, 255);
+        const QColor top(180, 120, 60, 255);
+        auto blended = [&](BlendMode m) {
+            Layer t(16, 16, "t");
+            t.setImage(makeImage(16, 16, top));
+            t.setBlendMode(m);
+            QImage r = t.composited(makeImage(16, 16, base));
+            return r.pixelColor(8, 8);
+        };
+        auto near = [](int a, int b, int tol) { return std::abs(a - b) <= tol; };
+
+        // Xor: per-channel bitwise XOR of the colour bytes (exact).
+        QColor x = blended(BlendMode::Xor);
+        CHECK(near(x.red(),   90 ^ 180, 1) && near(x.green(), 90 ^ 120, 1) &&
+              near(x.blue(),  90 ^ 60,  1),
+              "Xor is a per-channel bitwise XOR of the two colours");
+
+        // Overlay: base<128 -> 2*B*T/255 per channel.
+        QColor o = blended(BlendMode::Overlay);
+        CHECK(near(o.red(), 2*90*180/255, 4) && near(o.green(), 2*90*120/255, 4) &&
+              near(o.blue(), 2*90*60/255, 4),
+              "Overlay uses the standard overlay formula");
+
+        // Color Burn: 255 - (255-B)*255/T, clamped to 0.
+        QColor cb = blended(BlendMode::ColorBurn);
+        CHECK(near(cb.red(), 21, 4) && cb.green() <= 4 && cb.blue() <= 4,
+              "Color Burn uses the standard color-burn formula");
+
+        // Color Dodge: min(255, B*255/(255-T)).
+        QColor cd = blended(BlendMode::ColorDodge);
+        CHECK(cd.red() >= 251 && near(cd.green(), 170, 4) && near(cd.blue(), 118, 4),
+              "Color Dodge uses the standard color-dodge formula");
+    }
+
+    // ---------- MOVE LAYER TO TOP / BOTTOM ----------
+    SECTION("Move layer to very top / bottom");
+    {
+        // Ctrl+click on the panel's move buttons calls moveLayer(idx, top/bottom);
+        // verify that reordering directly.
+        Document doc(16, 16);                 // layer 0 = "Background"
+        doc.layerAt(0)->setName("A");
+        int b = doc.addLayer(); doc.layerAt(b)->setName("B");
+        int c = doc.addLayer(); doc.layerAt(c)->setName("C");
+        // Stack (bottom->top): A, B, C
+        doc.moveLayer(0, doc.layerCount() - 1);       // send A to the very top
+        CHECK(doc.layerAt(0)->name()=="B" && doc.layerAt(1)->name()=="C" &&
+              doc.layerAt(2)->name()=="A", "move-to-top reorders correctly");
+        doc.moveLayer(2, 0);                           // send A back to the bottom
+        CHECK(doc.layerAt(0)->name()=="A" && doc.layerAt(1)->name()=="B" &&
+              doc.layerAt(2)->name()=="C", "move-to-bottom reorders correctly");
+    }
+
     // ---------- UNDO / REDO ----------
     SECTION("Undo / redo");
     {

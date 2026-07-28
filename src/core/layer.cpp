@@ -60,7 +60,7 @@ QImage Layer::composited(const QImage &below) const {
     // Paint.NET blend modes that Qt has no built-in composition mode for are
     // computed per-pixel here, then composited SourceOver.
     if (m_blendMode == BlendMode::Glow || m_blendMode == BlendMode::Reflect
-        || m_blendMode == BlendMode::Negation) {
+        || m_blendMode == BlendMode::Negation || m_blendMode == BlendMode::Xor) {
         QImage base = below.convertToFormat(QImage::Format_ARGB32);
         QImage top = m_image.convertToFormat(QImage::Format_ARGB32);
         // "blended" holds the blend result with the top layer's alpha; drawn
@@ -96,6 +96,11 @@ QImage Layer::composited(const QImage &below) const {
                     rr = reflect(qRed(s), qRed(b));
                     gg = reflect(qGreen(s), qGreen(b));
                     bb = reflect(qBlue(s), qBlue(b));
+                    break;
+                case BlendMode::Xor:  // Paint.NET: per-channel bitwise XOR of colours
+                    rr = qRed(b)   ^ qRed(s);
+                    gg = qGreen(b) ^ qGreen(s);
+                    bb = qBlue(b)  ^ qBlue(s);
                     break;
                 case BlendMode::Negation:
                 default:
@@ -169,7 +174,8 @@ QImage Layer::composited(const QImage &below) const {
         painter.setCompositionMode(QPainter::CompositionMode_Screen);
         break;
     case BlendMode::Xor:
-        painter.setCompositionMode(QPainter::CompositionMode_Xor);
+        // Handled in the per-pixel branch above (bitwise XOR of colour channels).
+        // Qt's CompositionMode_Xor is a Porter-Duff alpha XOR, not Paint.NET's.
         break;
     case BlendMode::Overwrite:
         painter.setCompositionMode(QPainter::CompositionMode_Source);

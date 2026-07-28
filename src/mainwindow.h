@@ -79,6 +79,7 @@ private slots:
     void importLayerFromFile();     // add an image file as a new layer
     void flipActiveLayerHorizontal();
     void flipActiveLayerVertical();
+    void showRotateZoomLayerDialog();   // rotate + scale the active layer
     void invertSelection();
 
     // Image

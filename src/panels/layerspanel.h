@@ -23,6 +23,8 @@ public:
 
 signals:
     void layerSelected(int index);
+    // Emitted when a layer row is double-clicked (opens Layer Properties).
+    void layerDoubleClicked(int index);
 
 public slots:
     void updateLayerList();

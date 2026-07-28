@@ -633,6 +633,12 @@ const QHash<QString, QString> &table() {
         {"Réinitialiser les couleurs par défaut", "Reset to the default colors"},
         {"Permuter les couleurs", "Swap colors"},
         {"Paramètre %1", "Parameter %1"},
+        {"Palette", "Palette"},
+        {"Ajouter la couleur à la palette", "Add colour to palette"},
+        {"Enregistrer la palette...", "Save Palette..."},
+        {"Charger une palette...", "Open Palette..."},
+        {"Réinitialiser la palette", "Reset Palette"},
+        {"Palettes (*.txt);;Tous les fichiers (*)", "Palettes (*.txt);;All files (*)"},
 
         // ---- Messages ----
         {"Impossible de charger le fichier image.", "Could not load the image file."},

@@ -1154,6 +1154,37 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- COLORS PANEL: PALETTE SERIALIZATION ROUND-TRIPS ----------
+    SECTION("Palette serialization");
+    {
+        // Save-then-load must reproduce the palette exactly, including alpha.
+        QVector<QColor> pal = {
+            QColor(0x00,0x00,0x00), QColor(0xFF,0x00,0x00),
+            QColor(0x12,0x34,0x56), QColor::fromRgba(qRgba(0x80, 0x11, 0x22, 0x33)),
+        };
+        const QString text = ColorsPanel::paletteToText(pal);
+        const QVector<QColor> back = ColorsPanel::paletteFromText(text);
+        CHECK(back.size() == pal.size(), "round-trip keeps the colour count");
+        bool same = back.size() == pal.size();
+        for (int i = 0; i < back.size() && same; ++i)
+            same = back[i].rgba() == pal[i].rgba();
+        CHECK(same, "round-trip preserves every ARGB value including alpha");
+
+        // 8-digit uppercase AARRGGBB, one per line.
+        CHECK(text.startsWith("FF000000\n"), "opaque black serializes as FF000000");
+
+        // Comments (';'), blank lines and malformed lines are skipped.
+        const QString messy = "; a comment\n\nFF00FF00\nnothex!!\nFF\n#FF0000FF\n";
+        const QVector<QColor> parsed = ColorsPanel::paletteFromText(messy);
+        CHECK(parsed.size() == 2, "comments/blank/malformed lines are skipped");
+        CHECK(parsed.size() == 2 && parsed[0].rgba() == qRgba(0, 255, 0, 255),
+              "green parses from AARRGGBB");
+        CHECK(parsed.size() == 2 && parsed[1].rgba() == qRgba(0, 0, 255, 255),
+              "a leading '#' is tolerated");
+
+        CHECK(ColorsPanel::defaultPalette().size() == 32, "default palette has 32 colours");
+    }
+
     // ---------- DOCK PANELS NEVER GET WRAPPED IN A GROUP WINDOW ----------
     SECTION("Dock options");
     {

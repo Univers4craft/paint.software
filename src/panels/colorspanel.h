@@ -7,6 +7,7 @@
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QVector>
 
 class Document;
 
@@ -64,6 +65,12 @@ public:
     // painted pixmaps, so a stylesheet change cannot recolour them.
     void refreshIcons();
 
+    // Palette serialization, exposed as static helpers so they can be unit
+    // tested without a file dialog. One colour per line, 8-digit AARRGGBB hex.
+    static QString paletteToText(const QVector<QColor> &palette);
+    static QVector<QColor> paletteFromText(const QString &text);
+    static QVector<QColor> defaultPalette();
+
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
@@ -79,6 +86,10 @@ private slots:
     void onSwatchRightClicked(const QColor &color);
     void updateFromDocument();
     void shrinkToFit();
+    void addCurrentColorToPalette();
+    void savePalette();
+    void openPalette();
+    void resetPalette();
 
 private:
     void updateSliders(const QColor &color);
@@ -88,6 +99,12 @@ private:
     // addLayout(), which adopts the sub-layout. Plain addItem() does not, and the
     // swatch buttons then never get a parent widget and are never shown.
     void createSwatches(class QBoxLayout *layout);
+    // Rebuilds the swatch button grid from m_palette. Called after any edit to
+    // the palette (add / open / reset).
+    void rebuildSwatchGrid();
+
+    QVector<QColor> m_palette;
+    class QGridLayout *m_swatchGrid = nullptr;
 
     Document *m_document = nullptr;
     class QComboBox *m_slotCombo = nullptr;

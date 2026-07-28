@@ -14,6 +14,10 @@
 #include "../theme.h"
 #include <QComboBox>
 #include <QEvent>
+#include <QMenu>
+#include <QFileDialog>
+#include <QFile>
+#include <QTextStream>
 #include <cmath>
 
 // ---- ColorWheelWidget ----
@@ -597,10 +601,10 @@ void ColorsPanel::refreshIcons() {
     }
 }
 
-void ColorsPanel::createSwatches(QBoxLayout *parentLayout) {
-    // paint.net's default palette: 32 colours laid out as 2 rows of 16. The top
-    // row is the fully-saturated hues, the bottom row their darker halves.
-    static const QColor swatchColors[] = {
+// paint.net's default palette: 32 colours laid out as 2 rows of 16. The top
+// row is the fully-saturated hues, the bottom row their darker halves.
+QVector<QColor> ColorsPanel::defaultPalette() {
+    return {
         // Row 1 — black, mid grey, then the bright hues
         QColor(0x00,0x00,0x00), QColor(0x40,0x40,0x40), QColor(0xFF,0x00,0x00), QColor(0xFF,0x6A,0x00),
         QColor(0xFF,0xD8,0x00), QColor(0xB6,0xFF,0x00), QColor(0x4C,0xFF,0x00), QColor(0x00,0xFF,0x21),
@@ -612,22 +616,101 @@ void ColorsPanel::createSwatches(QBoxLayout *parentLayout) {
         QColor(0x00,0x7F,0x46), QColor(0x00,0x7F,0x7F), QColor(0x00,0x4A,0x7F), QColor(0x00,0x13,0x7F),
         QColor(0x21,0x00,0x7F), QColor(0x57,0x00,0x7F), QColor(0x7F,0x00,0x6E), QColor(0x7F,0x00,0x37),
     };
+}
+
+// Serialize the palette as one 8-digit uppercase AARRGGBB hex value per line,
+// matching paint.net's plain-text palette files.
+QString ColorsPanel::paletteToText(const QVector<QColor> &palette) {
+    QString out;
+    for (const QColor &c : palette) {
+        out += QStringLiteral("%1%2%3%4\n")
+                   .arg(c.alpha(), 2, 16, QChar('0'))
+                   .arg(c.red(),   2, 16, QChar('0'))
+                   .arg(c.green(), 2, 16, QChar('0'))
+                   .arg(c.blue(),  2, 16, QChar('0'))
+                   .toUpper();
+    }
+    return out;
+}
+
+// Parse a palette file: each non-empty line is an AARRGGBB hex value. Lines
+// starting with ';' are comments (paint.net convention); malformed lines are
+// skipped rather than aborting the whole load.
+QVector<QColor> ColorsPanel::paletteFromText(const QString &text) {
+    QVector<QColor> palette;
+    const QStringList lines = text.split('\n');
+    for (QString line : lines) {
+        line = line.trimmed();
+        if (line.isEmpty() || line.startsWith(';')) continue;
+        if (line.startsWith('#')) line = line.mid(1);
+        if (line.size() != 8) continue;
+        bool ok = false;
+        const uint argb = line.toUInt(&ok, 16);
+        if (!ok) continue;
+        palette.append(QColor::fromRgba(static_cast<QRgb>(argb)));
+    }
+    return palette;
+}
+
+void ColorsPanel::createSwatches(QBoxLayout *parentLayout) {
+    m_palette = defaultPalette();
+
+    // Header row: the "+" (add current colour) and the palette management menu.
+    auto *paletteHeader = new QHBoxLayout;
+    paletteHeader->setContentsMargins(0, 4, 0, 0);
+    paletteHeader->setSpacing(2);
+
+    auto *addBtn = new QToolButton;
+    addBtn->setText("+");
+    addBtn->setFixedSize(20, 20);
+    addBtn->setToolTip(TR("Ajouter la couleur à la palette"));
+    connect(addBtn, &QToolButton::clicked, this, &ColorsPanel::addCurrentColorToPalette);
+    paletteHeader->addWidget(addBtn);
+
+    auto *menuBtn = new QToolButton;
+    menuBtn->setText(TR("Palette"));
+    menuBtn->setFixedHeight(20);
+    menuBtn->setPopupMode(QToolButton::InstantPopup);
+    auto *menu = new QMenu(menuBtn);
+    menu->addAction(TR("Enregistrer la palette..."), this, &ColorsPanel::savePalette);
+    menu->addAction(TR("Charger une palette..."), this, &ColorsPanel::openPalette);
+    menu->addAction(TR("Réinitialiser la palette"), this, &ColorsPanel::resetPalette);
+    menuBtn->setMenu(menu);
+    paletteHeader->addWidget(menuBtn);
+    paletteHeader->addStretch();
+    parentLayout->addLayout(paletteHeader);
+
+    m_swatchGrid = new QGridLayout;
+    m_swatchGrid->setSpacing(1);
+    m_swatchGrid->setContentsMargins(0, 2, 0, 0);
+    // addLayout, not addItem: only addLayout adopts the sub-layout and reparents
+    // the swatch buttons into this panel. With addItem they stay parentless and
+    // the whole palette is silently invisible.
+    parentLayout->addLayout(m_swatchGrid);
+
+    rebuildSwatchGrid();
+}
+
+void ColorsPanel::rebuildSwatchGrid() {
+    if (!m_swatchGrid) return;
+
+    // Clear any existing swatch buttons.
+    while (QLayoutItem *item = m_swatchGrid->takeAt(0)) {
+        if (QWidget *w = item->widget()) w->deleteLater();
+        delete item;
+    }
 
     // Swatch size, border included. 16 of these across sets the panel's width,
     // so keep it small: the wheel above is sized to match this row's width.
     const int kSwatch = 11;
+    const int cols = 16;   // rows of 16, like paint.net
 
-    auto *grid = new QGridLayout;
-    grid->setSpacing(1);
-    grid->setContentsMargins(0, 4, 0, 0);
-
-    int cols = 16;   // 2 rows of 16, like paint.net
-    int count = sizeof(swatchColors) / sizeof(swatchColors[0]);
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < m_palette.size(); ++i) {
         auto *btn = new QToolButton;
         btn->setFixedSize(kSwatch, kSwatch);
         btn->setAutoRaise(true);
-        QString hex = swatchColors[i].name();
+        const QColor c = m_palette[i];
+        const QString hex = c.name();
         // The stylesheet sizes the *content* box, so the 1px border and any
         // padding are added on top: state both, or each cell silently ends up
         // half again as wide as asked and the whole panel bloats.
@@ -638,7 +721,6 @@ void ColorsPanel::createSwatches(QBoxLayout *parentLayout) {
                                .arg(hex).arg(kSwatch - 2));
         btn->setToolTip(QString("<b>%1</b><br>%2")
             .arg(hex, TR("Clic : couleur primaire · Clic droit : couleur secondaire")));
-        QColor c = swatchColors[i];
         connect(btn, &QToolButton::clicked, this, [this, c]() { onSwatchClicked(c); });
 
         // Right-click assigns the swatch to the *other* slot, like paint.net.
@@ -646,12 +728,48 @@ void ColorsPanel::createSwatches(QBoxLayout *parentLayout) {
         connect(btn, &QToolButton::customContextMenuRequested, this, [this, c]() {
             onSwatchRightClicked(c);
         });
-        grid->addWidget(btn, i / cols, i % cols);
+        m_swatchGrid->addWidget(btn, i / cols, i % cols);
     }
-    // addLayout, not addItem: only addLayout adopts the sub-layout and reparents
-    // the swatch buttons into this panel. With addItem they stay parentless and
-    // the whole palette is silently invisible.
-    parentLayout->addLayout(grid);
+}
+
+void ColorsPanel::addCurrentColorToPalette() {
+    QColor c = Qt::black;
+    if (m_document)
+        c = m_editingPrimary ? m_document->primaryColor() : m_document->secondaryColor();
+    else
+        c = m_colorWheel->color();
+    m_palette.append(c);
+    rebuildSwatchGrid();
+}
+
+void ColorsPanel::savePalette() {
+    const QString path = QFileDialog::getSaveFileName(
+        this, TR("Enregistrer la palette..."), QString(),
+        TR("Palettes (*.txt);;Tous les fichiers (*)"));
+    if (path.isEmpty()) return;
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+    QTextStream ts(&f);
+    ts << paletteToText(m_palette);
+}
+
+void ColorsPanel::openPalette() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, TR("Charger une palette..."), QString(),
+        TR("Palettes (*.txt);;Tous les fichiers (*)"));
+    if (path.isEmpty()) return;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+    QTextStream ts(&f);
+    const QVector<QColor> parsed = paletteFromText(ts.readAll());
+    if (parsed.isEmpty()) return;   // nothing usable — keep the current palette
+    m_palette = parsed;
+    rebuildSwatchGrid();
+}
+
+void ColorsPanel::resetPalette() {
+    m_palette = defaultPalette();
+    rebuildSwatchGrid();
 }
 
 void ColorsPanel::onSwatchRightClicked(const QColor &color) {

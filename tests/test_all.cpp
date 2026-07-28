@@ -166,7 +166,8 @@ int main(int argc, char **argv) {
     // ---------- TOOLS ----------
     SECTION("Tools draw into the active layer");
     {
-        auto testDraw = [](const char *name, Tool *tool, bool useTwoPoints = true) {
+        auto testDraw = [](const char *name, Tool *tool, bool useTwoPoints = true,
+                           bool commitAfter = false) {
             Document doc(64, 64);
             doc.activeLayer()->clear(Qt::white);
             doc.setPrimaryColor(Qt::red);
@@ -180,13 +181,15 @@ int main(int argc, char **argv) {
                 QMouseEvent r = releaseEv(QPointF(32, 32));
                 tool->mouseReleaseEvent(QPointF(32, 32), &r, canvas);
             }
+            // Edit-before-commit tools (Shape, Line) only rasterise on commit.
+            if (commitAfter) tool->deactivate(canvas);
             bool changed = imagesDiffer(before, doc.activeLayer()->image());
             CHECK(changed, name);
         };
         BrushTool brush;        testDraw("Brush modifies pixels", &brush);
         PencilTool pencil;      testDraw("Pencil modifies pixels", &pencil);
         FillTool fill;          testDraw("Fill modifies pixels", &fill, false);
-        ShapeTool shape;        testDraw("Shape modifies pixels", &shape);
+        ShapeTool shape;        testDraw("Shape modifies pixels", &shape, true, /*commitAfter*/true);
         GradientTool grad;      testDraw("Gradient modifies pixels", &grad);
         // Eraser needs opaque content to erase.
         {
@@ -1846,6 +1849,168 @@ int main(int argc, char **argv) {
               "Escape cancels the line — nothing is painted");
     }
 
+    SECTION("Shape tool: editable before commit (Paint.NET)");
+    {
+        // Like the Line/Curve tool, dragging a shape lays out its bounding box but
+        // does NOT paint — the shape stays live for editing until committed.
+        Document doc(64, 64);
+        doc.activeLayer()->clear(Qt::white);
+        doc.setPrimaryColor(Qt::red);
+        doc.setSecondaryColor(Qt::red);
+        CanvasWidget canvas;
+        canvas.setDocument(&doc);
+
+        ShapeTool sh;
+        sh.setShapeFill(ShapeFill::Filled);
+        QImage before = doc.activeLayer()->image().copy();
+        strokeTool(&sh, canvas, QPointF(8, 8), QPointF(56, 56));
+        CHECK(!imagesDiffer(before, doc.activeLayer()->image()),
+              "drawing a shape does not paint until committed (edit mode)");
+        sh.deactivate(canvas);   // switching away commits
+        CHECK(imagesDiffer(before, doc.activeLayer()->image()),
+              "committing the shape paints it into the layer");
+
+        // A fresh shape cancelled with Escape leaves the layer untouched.
+        Document doc2(64, 64);
+        doc2.activeLayer()->clear(Qt::white);
+        CanvasWidget canvas2;
+        canvas2.setDocument(&doc2);
+        ShapeTool sh2;
+        sh2.setShapeFill(ShapeFill::Filled);
+        QImage before2 = doc2.activeLayer()->image().copy();
+        strokeTool(&sh2, canvas2, QPointF(8, 8), QPointF(56, 56));
+        QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        sh2.keyPressEvent(&esc, canvas2);
+        sh2.deactivate(canvas2);
+        CHECK(!imagesDiffer(before2, doc2.activeLayer()->image()),
+              "Escape cancels the shape — nothing is painted");
+
+        // Enter commits, exactly like the Line/Curve tool.
+        Document doc3(64, 64);
+        doc3.activeLayer()->clear(Qt::white);
+        doc3.setPrimaryColor(Qt::blue);
+        doc3.setSecondaryColor(Qt::blue);
+        CanvasWidget canvas3;
+        canvas3.setDocument(&doc3);
+        ShapeTool sh3;
+        sh3.setShapeFill(ShapeFill::Filled);
+        QImage before3 = doc3.activeLayer()->image().copy();
+        strokeTool(&sh3, canvas3, QPointF(8, 8), QPointF(56, 56));
+        QKeyEvent ent(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        CHECK(sh3.wantsCommitKey(Qt::Key_Return), "shape claims Enter while editing");
+        sh3.keyPressEvent(&ent, canvas3);
+        CHECK(imagesDiffer(before3, doc3.activeLayer()->image()),
+              "Enter commits the shape");
+    }
+
+    SECTION("Shape catalogue: expanded set paints (issue #17)");
+    {
+        // Every catalogue entry must produce a non-empty raster once committed.
+        const ShapeType kinds[] = {
+            ShapeType::Rectangle, ShapeType::RoundedRectangle, ShapeType::Ellipse,
+            ShapeType::Diamond, ShapeType::Triangle, ShapeType::Trapezoid,
+            ShapeType::Parallelogram, ShapeType::RightTriangle, ShapeType::Pentagon,
+            ShapeType::Hexagon, ShapeType::Heptagon, ShapeType::Octagon,
+            ShapeType::Star3, ShapeType::Star4, ShapeType::Star, ShapeType::Star6,
+            ShapeType::Arrow, ShapeType::Chevron, ShapeType::SpeechBalloon,
+            ShapeType::Cloud, ShapeType::Heart, ShapeType::Lightning,
+            ShapeType::Cross, ShapeType::Check,
+        };
+        CHECK(std::size(kinds) == 24, "the catalogue has 24 shapes");
+        // The enum's numeric range must cover exactly this set, in order.
+        CHECK(static_cast<int>(ShapeType::Check) == 23, "Check is the last enum value");
+        for (ShapeType k : kinds) {
+            Document doc(80, 80);
+            doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::black);
+            doc.setSecondaryColor(Qt::black);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            ShapeTool sh;
+            sh.setShapeType(k);
+            sh.setShapeFill(ShapeFill::Both);
+            QImage before = doc.activeLayer()->image().copy();
+            strokeTool(&sh, canvas, QPointF(10, 10), QPointF(70, 70));
+            CHECK(!imagesDiffer(before, doc.activeLayer()->image()),
+                  "shape is not painted before commit");
+            sh.deactivate(canvas);
+            CHECK(imagesDiffer(before, doc.activeLayer()->image()),
+                  "committed shape paints pixels");
+        }
+    }
+
+    SECTION("Shape tool: rotate + move within the edit session");
+    {
+        // Rotating the live shape changes the committed raster vs. the un-rotated
+        // one; moving it shifts the painted pixels. Both happen without a fresh
+        // drag, proving the shape stays editable.
+        auto paintedBBox = [](double angleDeg, QPointF nudge) {
+            Document doc(100, 100);
+            doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::black);
+            doc.setSecondaryColor(Qt::black);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            ShapeTool sh;
+            sh.setShapeType(ShapeType::Rectangle);
+            sh.setShapeFill(ShapeFill::Filled);
+            // Lay out a wide, short rect so rotation is visible.
+            QMouseEvent p(QEvent::MouseButtonPress, QPointF(20, 40), QPointF(20, 40),
+                          Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            sh.mousePressEvent(QPointF(20, 40), &p, canvas);
+            QMouseEvent m(QEvent::MouseMove, QPointF(80, 60), QPointF(80, 60),
+                          Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            sh.mouseMoveEvent(QPointF(80, 60), &m, canvas);
+            QMouseEvent r(QEvent::MouseButtonRelease, QPointF(80, 60), QPointF(80, 60),
+                          Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            sh.mouseReleaseEvent(QPointF(80, 60), &r, canvas);
+            // Rotate by grabbing the rotation handle (widget space).
+            if (angleDeg != 0.0) {
+                const QPointF centre(50, 50);
+                const QPointF rotHandle = canvas.canvasToWidget(QPointF(50, 40 - 24));
+                QMouseEvent rp(QEvent::MouseButtonPress, rotHandle, rotHandle,
+                               Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                sh.mousePressEvent(canvas.widgetToCanvas(rotHandle), &rp, canvas);
+                // Drag the handle to ~angleDeg around the centre.
+                const double rad = (angleDeg - 90.0) * M_PI / 180.0;
+                const QPointF target = centre + QPointF(std::cos(rad), std::sin(rad)) * 40.0;
+                const QPointF tW = canvas.canvasToWidget(target);
+                QMouseEvent rm(QEvent::MouseMove, tW, tW, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+                sh.mouseMoveEvent(target, &rm, canvas);
+                QMouseEvent ru(QEvent::MouseButtonRelease, tW, tW, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+                sh.mouseReleaseEvent(target, &ru, canvas);
+            }
+            // Nudge with arrow keys.
+            for (int i = 0; i < int(nudge.x()); ++i) {
+                QKeyEvent k(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
+                sh.keyPressEvent(&k, canvas);
+            }
+            for (int i = 0; i < int(nudge.y()); ++i) {
+                QKeyEvent k(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
+                sh.keyPressEvent(&k, canvas);
+            }
+            sh.deactivate(canvas);
+            const QImage &img = doc.activeLayer()->image();
+            int minx = 999, miny = 999, maxx = -1, maxy = -1;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                    if (qGray(img.pixel(x, y)) < 128) {
+                        minx = qMin(minx, x); maxx = qMax(maxx, x);
+                        miny = qMin(miny, y); maxy = qMax(maxy, y);
+                    }
+            return std::make_tuple(minx, miny, maxx, maxy);
+        };
+
+        auto [ax0, ay0, ax1, ay1] = paintedBBox(0.0, QPointF(0, 0));
+        auto [bx0, by0, bx1, by1] = paintedBBox(90.0, QPointF(0, 0));
+        // The un-rotated rect is wide & short; rotated 90° it becomes tall & narrow.
+        const int wA = ax1 - ax0, hA = ay1 - ay0;
+        const int wB = bx1 - bx0, hB = by1 - by0;
+        CHECK(wA > hA, "un-rotated rect is wider than tall");
+        CHECK(hB > wB, "after a 90° rotation the rect is taller than wide");
+
+        auto [nx0, ny0, nx1, ny1] = paintedBBox(0.0, QPointF(10, 10));
+        CHECK(nx0 > ax0 && ny0 > ay0, "arrow-key nudges move the shape before commit");
+    }
+
     SECTION("Fill Style: solid + hatch patterns");
     {
         // Paint.NET's Fill Style is Solid Color plus the GDI+ hatch set (~53).
@@ -1888,6 +2053,7 @@ int main(int argc, char **argv) {
         sh.setShapeFill(ShapeFill::Filled);
         sh.setFillStyle(5);            // Cross hatch
         strokeTool(&sh, canvas, QPointF(8, 8), QPointF(56, 56));
+        sh.deactivate(canvas);         // commit the editable shape into the layer
         int fg = 0, bg = 0;
         const QImage &out = doc.activeLayer()->image();
         for (int y = 20; y < 44; ++y)
@@ -2008,6 +2174,7 @@ int main(int argc, char **argv) {
             sh.mouseMoveEvent(b, &e2, canvas);
             QMouseEvent e3(QEvent::MouseButtonRelease, b, b, Qt::LeftButton, Qt::NoButton, mods);
             sh.mouseReleaseEvent(b, &e3, canvas);
+            sh.deactivate(canvas);   // commit the editable shape into the layer
             const QImage &img = doc.activeLayer()->image();
             int minx = 999, miny = 999, maxx = -1, maxy = -1;
             for (int y = 0; y < img.height(); ++y)
@@ -2062,6 +2229,7 @@ int main(int argc, char **argv) {
             sh.setShapeFill(ShapeFill::Filled);
             sh.setCornerSize(radius);
             strokeTool(&sh, canvas, QPointF(10, 10), QPointF(70, 70));
+            sh.deactivate(canvas);   // commit the editable shape into the layer
             // Is the top-left corner pixel (just inside the bbox) painted?
             return qGray(doc.activeLayer()->image().pixel(12, 12)) < 128;
         };

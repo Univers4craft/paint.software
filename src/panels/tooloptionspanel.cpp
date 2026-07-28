@@ -535,9 +535,16 @@ void ToolOptionsPanel::populateVariantCombo() {
 
     if (auto *shape = dynamic_cast<ShapeTool*>(m_tool)) {
         m_variantLabel->setText(TR("Forme :"));
-        m_variantCombo->addItems({TR("Rectangle"), TR("Ellipse"), TR("Rectangle arrondi"),
-                                  TR("Triangle"), TR("Losange"), TR("Pentagone"),
-                                  TR("Hexagone"), TR("Étoile")});
+        // Order must match the ShapeType enum.
+        m_variantCombo->addItems({TR("Rectangle"), TR("Rectangle arrondi"), TR("Ellipse"),
+                                  TR("Losange"), TR("Triangle"), TR("Trapèze"),
+                                  TR("Parallélogramme"), TR("Triangle rectangle"),
+                                  TR("Pentagone"), TR("Hexagone"), TR("Heptagone"),
+                                  TR("Octogone"), TR("Étoile à 3 branches"),
+                                  TR("Étoile à 4 branches"), TR("Étoile à 5 branches"),
+                                  TR("Étoile à 6 branches"), TR("Flèche"), TR("Chevron"),
+                                  TR("Bulle de dialogue"), TR("Nuage"), TR("Cœur"),
+                                  TR("Éclair"), TR("Croix"), TR("Coche")});
         m_variantCombo->setCurrentIndex(static_cast<int>(shape->shapeType()));
     } else if (auto *grad = dynamic_cast<GradientTool*>(m_tool)) {
         m_variantLabel->setText(TR("Type :"));

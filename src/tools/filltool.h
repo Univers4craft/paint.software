@@ -18,7 +18,18 @@ public:
     bool isGlobal() const { return m_global; }
     void setGlobal(bool g) { m_global = g; }
 
+    // Sampling source (Paint.NET). true = Image (composite of visible layers)
+    // decides which pixels to fill; false = Layer (the active layer). Either way
+    // the paint is written to the active layer. Default Image, like Paint.NET.
+    bool sampleImage() const { return m_sampleImage; }
+    void setSampleImage(bool image) { m_sampleImage = image; }
+
 private:
-    void floodFill(QImage &image, const QPoint &pos, const QColor &fillColor, class Document *doc, bool global);
+    // Fills the active layer (target). The region to fill is decided from
+    // sampleSrc (the composite when Sampling=Image, or the layer itself when
+    // Sampling=Layer); the chosen blend mode composites the fill onto target.
+    void floodFill(QImage &target, const QImage &sampleSrc, const QPoint &pos,
+                   const QColor &fillColor, class Document *doc, bool global);
     bool m_global = false;
+    bool m_sampleImage = true;
 };

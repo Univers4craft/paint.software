@@ -150,24 +150,9 @@ void BrushTool::compositeOverwrite(Document *doc, Layer *layer, const QColor &co
 }
 
 QPainter::CompositionMode BrushTool::brushCompositionMode() const {
-    // Maps the blend-mode combo (Layer::allBlendModes order) to a Qt mode.
-    switch (m_blendMode) {
-    case 1:  return QPainter::CompositionMode_Multiply;   // Multiply
-    case 2:  return QPainter::CompositionMode_Plus;        // Additive
-    case 3:  return QPainter::CompositionMode_ColorBurn;
-    case 4:  return QPainter::CompositionMode_ColorDodge;
-    case 5:  return QPainter::CompositionMode_Darken;
-    case 6:  return QPainter::CompositionMode_Difference;
-    case 7:  return QPainter::CompositionMode_ColorDodge;  // Glow    (approximation)
-    case 8:  return QPainter::CompositionMode_Lighten;
-    case 9:  return QPainter::CompositionMode_Difference;  // Negation (approximation)
-    case 10: return QPainter::CompositionMode_Overlay;
-    case 11: return QPainter::CompositionMode_Screen;      // Reflect (approximation)
-    case 12: return QPainter::CompositionMode_Screen;
-    case 13: return QPainter::CompositionMode_Xor;         // Xor
-    // 14 (Overwrite) is handled separately in compositeOverwrite().
-    default: return QPainter::CompositionMode_SourceOver;  // Normal + unsupported
-    }
+    // Shared mapping (Layer::allBlendModes order). 14 (Overwrite) is handled
+    // separately in compositeOverwrite().
+    return Tool::compositionModeFor(m_blendMode);
 }
 
 void BrushTool::drawOverlay(QPainter &painter, const CanvasWidget &canvas) {

@@ -42,6 +42,7 @@ private slots:
     void onAntialiasToggled(bool checked);
     void onPressureToggled(bool checked);
     void onBlendModeChanged(int index);
+    void onSamplingChanged(int index);
     void onFillModeChanged(int index);
     void onFillStyleChanged(int index);
     // Gradient tool: repeat mode + transparency toggle.
@@ -112,6 +113,10 @@ private:
 
     QLabel *m_blendModeLabel;
     QComboBox *m_blendModeCombo;
+
+    // Sampling source (Fill / Magic Wand): Image (composite) vs Layer (active).
+    QLabel *m_samplingLabel;
+    QComboBox *m_samplingCombo;
 
     // Text tool controls.
     QFontComboBox *m_fontCombo;

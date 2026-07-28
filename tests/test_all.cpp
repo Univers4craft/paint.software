@@ -926,6 +926,69 @@ int main(int argc, char **argv) {
         CHECK(high > low, "higher tolerance floods a larger area");
     }
 
+    // ---------- SAMPLING: Image vs Layer (Paint.NET) ----------
+    SECTION("Magic Wand sampling: Layer selects differently than Image");
+    {
+        // Bottom layer: fully red. Top (active) layer: left half red, right half
+        // transparent. Composite (Image) is all-red; the top layer alone (Layer)
+        // has a transparent right half.
+        Document doc(32, 32);
+        doc.activeLayer()->clear(Qt::red);                       // bottom layer, index 0
+        QImage top = makeImage(32, 32, QColor(255, 0, 0, 255));  // red
+        { QPainter p(&top); p.setCompositionMode(QPainter::CompositionMode_Source);
+          p.fillRect(16, 0, 16, 32, Qt::transparent); p.end(); }
+        int topIdx = doc.addLayer(top, "Top");
+        doc.setActiveLayer(topIdx);
+        CanvasWidget canvas; canvas.setDocument(&doc);
+
+        // Sampling = Image: the composite is uniform red, so the right side is
+        // part of the same-colour region.
+        {
+            MagicWandTool wand; wand.setTolerance(20); wand.setSampleImage(true);
+            QMouseEvent e = pressEv(QPointF(2, 2)); wand.mousePressEvent(QPointF(2, 2), &e, canvas);
+            CHECK(doc.selection().isSelected(24, 16),
+                  "Sampling=Image: red shows through in the composite, right side selected");
+        }
+        // Sampling = Layer: the active layer's right half is transparent, so it is
+        // NOT part of the red region.
+        {
+            MagicWandTool wand; wand.setTolerance(20); wand.setSampleImage(false);
+            QMouseEvent e = pressEv(QPointF(2, 2)); wand.mousePressEvent(QPointF(2, 2), &e, canvas);
+            CHECK(doc.selection().isSelected(2, 2),
+                  "Sampling=Layer: the clicked red pixel is selected");
+            CHECK(!doc.selection().isSelected(24, 16),
+                  "Sampling=Layer: the transparent right half is excluded");
+        }
+    }
+
+    SECTION("Paint Bucket sampling: Image decides region, fill writes active layer");
+    {
+        // Bottom layer: left half blue, right half green (opaque). Top (active)
+        // layer: fully transparent. With Sampling=Image the region is decided from
+        // the composite (contiguous blue = left half), but the paint lands on the
+        // active (top) layer.
+        Document doc(32, 32);
+        QImage bottom = makeImage(32, 32, QColor(0, 0, 255, 255));  // blue
+        { QPainter p(&bottom); p.fillRect(16, 0, 16, 32, QColor(0, 255, 0, 255)); p.end(); }
+        doc.activeLayer()->setImage(bottom);                       // index 0
+        int topIdx = doc.addLayer(makeImage(32, 32, Qt::transparent), "Top");
+        doc.setActiveLayer(topIdx);
+        doc.setPrimaryColor(Qt::red);
+        CanvasWidget canvas; canvas.setDocument(&doc);
+
+        FillTool fill; fill.setTolerance(20); fill.setSampleImage(true);
+        QMouseEvent e = pressEv(QPointF(4, 4)); fill.mousePressEvent(QPointF(4, 4), &e, canvas);
+
+        QImage &topImg = doc.activeLayer()->image();
+        CHECK(topImg.pixelColor(4, 4).red() > 200 && topImg.pixelColor(4, 4).alpha() > 200,
+              "Sampling=Image: composite's blue region on the left is filled red on the active layer");
+        CHECK(topImg.pixelColor(28, 4).alpha() < 40,
+              "Sampling=Image: the green (right) region is not part of the flood, stays transparent");
+        // The paint must go to the ACTIVE (top) layer, never the sampled bottom.
+        CHECK(doc.layerAt(0)->image().pixelColor(4, 4).blue() > 200,
+              "the bottom (sampled) layer is left untouched by the fill");
+    }
+
     // ---------- SMART MERGE (keep both drawings) ----------
     SECTION("Merge keeps both drawings when top has a flat background");
     {

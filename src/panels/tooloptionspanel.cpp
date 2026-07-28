@@ -208,6 +208,19 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     connect(m_blendModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onBlendModeChanged);
 
+    // --- Sampling source (Fill / Magic Wand): Image vs Layer (Paint.NET) ---
+    m_samplingLabel = new QLabel(TR("Échantillonnage :"));
+    m_samplingLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_samplingLabel);
+    m_samplingCombo = new QComboBox;
+    // Index 0 = Image (composite), 1 = Calque/Layer (active layer only).
+    m_samplingCombo->addItems({TR("Image"), TR("Calque")});
+    m_samplingCombo->setFixedHeight(20);
+    m_samplingCombo->setFixedWidth(90);
+    layout->addWidget(m_samplingCombo);
+    connect(m_samplingCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onSamplingChanged);
+
     // --- Text tool: font family, size, and B / I / U ---
     m_fontCombo = new QFontComboBox;
     m_fontCombo->setFixedHeight(20);
@@ -375,6 +388,16 @@ void ToolOptionsPanel::updateFromTool() {
     m_blendModeCombo->setCurrentIndex(m_tool->blendMode());
     m_blendModeCombo->blockSignals(false);
 
+    // Sampling source: reflect the active Fill / Magic Wand tool.
+    {
+        bool sampleImage = true;
+        if (auto *fill = dynamic_cast<FillTool*>(m_tool)) sampleImage = fill->sampleImage();
+        else if (auto *wand = dynamic_cast<MagicWandTool*>(m_tool)) sampleImage = wand->sampleImage();
+        m_samplingCombo->blockSignals(true);
+        m_samplingCombo->setCurrentIndex(sampleImage ? 0 : 1);
+        m_samplingCombo->blockSignals(false);
+    }
+
     if (auto *shape = dynamic_cast<ShapeTool*>(m_tool)) {
         m_fillCombo->blockSignals(true);
         m_fillCombo->setCurrentIndex(static_cast<int>(shape->shapeFill()));
@@ -455,8 +478,15 @@ void ToolOptionsPanel::updateFromTool() {
     m_gradientRepeatLabel->setVisible(isGradient);
     m_gradientRepeatCombo->setVisible(isGradient);
     m_gradientTransparencyCheck->setVisible(isGradient);
-    m_blendModeLabel->setVisible(t == ToolType::Brush);
-    m_blendModeCombo->setVisible(t == ToolType::Brush);
+    // Blend mode: the brush and (Paint.NET) the paint bucket.
+    const bool hasBlendMode = (t == ToolType::Brush || t == ToolType::Fill);
+    m_blendModeLabel->setVisible(hasBlendMode);
+    m_blendModeCombo->setVisible(hasBlendMode);
+
+    // Sampling (Image vs Layer): Fill and Magic Wand, like Paint.NET.
+    const bool hasSampling = (t == ToolType::Fill || t == ToolType::MagicWand);
+    m_samplingLabel->setVisible(hasSampling);
+    m_samplingCombo->setVisible(hasSampling);
 
     const bool hasText = (t == ToolType::Text);
     m_fontCombo->setVisible(hasText);
@@ -527,6 +557,14 @@ void ToolOptionsPanel::setTabletPresent(bool present) {
 
 void ToolOptionsPanel::onBlendModeChanged(int index) {
     if (m_tool) { m_tool->setBlendMode(index); emit toolOptionsChanged(); }
+}
+
+void ToolOptionsPanel::onSamplingChanged(int index) {
+    // Index 0 = Image (composite), 1 = Calque/Layer (active layer only).
+    const bool sampleImage = (index == 0);
+    if (auto *fill = dynamic_cast<FillTool*>(m_tool)) fill->setSampleImage(sampleImage);
+    else if (auto *wand = dynamic_cast<MagicWandTool*>(m_tool)) wand->setSampleImage(sampleImage);
+    emit toolOptionsChanged();
 }
 
 void ToolOptionsPanel::populateVariantCombo() {
@@ -659,6 +697,15 @@ void ToolOptionsPanel::retranslate() {
     m_fillStyleCombo->setToolTip(TR("Motif de remplissage"));
     m_cornerLabel->setText(TR("Coin :"));
     m_blendModeLabel->setText(TR("Mode :"));
+    m_samplingLabel->setText(TR("Échantillonnage :"));
+    {
+        const int s = m_samplingCombo->currentIndex();
+        m_samplingCombo->blockSignals(true);
+        m_samplingCombo->clear();
+        m_samplingCombo->addItems({TR("Image"), TR("Calque")});
+        m_samplingCombo->setCurrentIndex(s < 0 ? 0 : s);
+        m_samplingCombo->blockSignals(false);
+    }
     m_fontSizeLabel->setText(TR("Taille :"));
     m_fontCombo->setToolTip(TR("Police"));
     m_boldBtn->setToolTip(TR("Gras"));

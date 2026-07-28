@@ -12,7 +12,17 @@ void MagicWandTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event
     if (!doc) return;
 
     QPoint pos = toPixelPos(canvasPos);
-    QImage image = doc->flattenVisible();
+    // Sampling=Image reads the composite of visible layers; Sampling=Layer reads
+    // only the active layer (Paint.NET). Fall back to the composite if there is
+    // no active layer.
+    QImage image;
+    if (m_sampleImage) {
+        image = doc->flattenVisible();
+    } else if (auto *layer = doc->activeLayer()) {
+        image = layer->image().convertToFormat(QImage::Format_ARGB32);
+    } else {
+        image = doc->flattenVisible();
+    }
     if (!image.valid(pos)) return;
 
     const SelectionMode mode = selectionModeFor(event->modifiers(), event->button());

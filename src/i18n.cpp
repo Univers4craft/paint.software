@@ -414,6 +414,9 @@ const QHash<QString, QString> &table() {
         {"Pointillés", "Dashed"},
         {"Contigu", "Contiguous"},
         {"Global", "Global"},
+        {"Échantillonnage :", "Sampling:"},
+        {"Calque", "Layer"},
+        {"Image", "Image"},
 
         // ---- Tool descriptions (tooltips) ----
         {"Sélectionne une zone rectangulaire à modifier.",

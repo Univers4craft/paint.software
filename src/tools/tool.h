@@ -109,6 +109,12 @@ public:
     int blendMode() const { return m_blendMode; }
     void setBlendMode(int m) { m_blendMode = m; }
 
+    // Maps a blend-mode combo index (Layer::allBlendModes order) to a Qt
+    // composition mode. Shared by the brush and paint-bucket tools. Index 14
+    // (Overwrite) needs a per-pixel replace, so callers handle it separately;
+    // this returns CompositionMode_Source for it as a sane fallback.
+    static QPainter::CompositionMode compositionModeFor(int blendIndex);
+
     // Fill Style, like Paint.NET: 0 = Solid Color, 1..N = a GDI+ hatch pattern
     // (see Hatch::). Used by the brush and shape tools.
     int fillStyle() const { return m_fillStyle; }

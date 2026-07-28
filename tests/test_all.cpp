@@ -226,6 +226,52 @@ int main(int argc, char **argv) {
         }
     }
 
+    // ---------- GRADIENT TOOL OPTIONS ----------
+    SECTION("Gradient tool exposes Paint.NET options");
+    {
+        GradientTool grad;
+        // New gradient types exist and round-trip through the setter.
+        grad.setGradientType(GradientType::LinearReflected);
+        CHECK(grad.gradientType() == GradientType::LinearReflected, "LinearReflected type");
+        grad.setGradientType(GradientType::Spiral);
+        CHECK(grad.gradientType() == GradientType::Spiral, "Spiral type");
+        // Repeat mode: default None, settable.
+        CHECK(grad.repeatMode() == GradientRepeat::None, "Repeat defaults to None");
+        grad.setRepeatMode(GradientRepeat::Reflect);
+        CHECK(grad.repeatMode() == GradientRepeat::Reflect, "Repeat mode settable");
+        // Transparency mode: default off, settable.
+        CHECK(!grad.transparencyMode(), "Transparency defaults off");
+        grad.setTransparencyMode(true);
+        CHECK(grad.transparencyMode(), "Transparency mode settable");
+        // Transparency mode paints varying alpha into the layer.
+        {
+            Document doc(64, 64); doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::red);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            GradientTool g; g.setTransparencyMode(true);
+            g.setGradientType(GradientType::Linear);
+            strokeTool(&g, canvas, QPointF(2,2), QPointF(60,60));
+            bool madeTransparent = false;
+            QImage &img = doc.activeLayer()->image();
+            for (int y=0;y<64 && !madeTransparent;++y) for (int x=0;x<64;++x)
+                if (img.pixelColor(x,y).alpha() < 255) { madeTransparent = true; break; }
+            CHECK(madeTransparent, "Transparency gradient varies alpha");
+        }
+        // Right-button drag draws (uses secondary as base) without crashing.
+        {
+            Document doc(64, 64); doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::red); doc.setSecondaryColor(Qt::blue);
+            CanvasWidget canvas; canvas.setDocument(&doc);
+            GradientTool g;
+            QImage before = doc.activeLayer()->image().copy();
+            QMouseEvent p = pressEv(QPointF(4,4), Qt::RightButton);
+            g.mousePressEvent(QPointF(4,4), &p, canvas);
+            QMouseEvent r = releaseEv(QPointF(58,58));
+            g.mouseReleaseEvent(QPointF(58,58), &r, canvas);
+            CHECK(imagesDiffer(before, doc.activeLayer()->image()), "Right-button gradient draws");
+        }
+    }
+
     // ---------- SELECTION-AWARE DRAWING ----------
     SECTION("Selection confines drawing");
     {

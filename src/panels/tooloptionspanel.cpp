@@ -176,6 +176,25 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     connect(m_variantCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onVariantChanged);
 
+    // --- Gradient repeat mode (Paint.NET: None / Repeat / Reflect) ---
+    m_gradientRepeatLabel = new QLabel(TR("Répétition :"));
+    m_gradientRepeatLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_gradientRepeatLabel);
+    m_gradientRepeatCombo = new QComboBox;
+    m_gradientRepeatCombo->addItems({TR("Aucune"), TR("Répéter"), TR("Réfléchir")});
+    m_gradientRepeatCombo->setFixedHeight(20);
+    m_gradientRepeatCombo->setFixedWidth(100);
+    layout->addWidget(m_gradientRepeatCombo);
+    connect(m_gradientRepeatCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onGradientRepeatChanged);
+
+    // --- Gradient transparency (alpha-only) mode ---
+    m_gradientTransparencyCheck = new QCheckBox(TR("Transparence"));
+    m_gradientTransparencyCheck->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_gradientTransparencyCheck);
+    connect(m_gradientTransparencyCheck, &QCheckBox::toggled,
+            this, &ToolOptionsPanel::onGradientTransparencyToggled);
+
     // --- Blend mode (brush-like tools) ---
     m_blendModeLabel = new QLabel(TR("Mode :"));
     m_blendModeLabel->setStyleSheet("font-size: 11px;");
@@ -383,6 +402,15 @@ void ToolOptionsPanel::updateFromTool() {
         m_alignCombo->blockSignals(true);   m_alignCombo->setCurrentIndex(static_cast<int>(text->alignment())); m_alignCombo->blockSignals(false);
     }
 
+    if (auto *grad = dynamic_cast<GradientTool*>(m_tool)) {
+        m_gradientRepeatCombo->blockSignals(true);
+        m_gradientRepeatCombo->setCurrentIndex(static_cast<int>(grad->repeatMode()));
+        m_gradientRepeatCombo->blockSignals(false);
+        m_gradientTransparencyCheck->blockSignals(true);
+        m_gradientTransparencyCheck->setChecked(grad->transparencyMode());
+        m_gradientTransparencyCheck->blockSignals(false);
+    }
+
     populateVariantCombo();
 
     // Show only the controls that apply to this tool.
@@ -422,6 +450,11 @@ void ToolOptionsPanel::updateFromTool() {
                              || t == ToolType::Fill);
     m_variantLabel->setVisible(hasVariant);
     m_variantCombo->setVisible(hasVariant);
+    // Gradient-only controls: repeat mode + transparency toggle.
+    const bool isGradient = (t == ToolType::Gradient);
+    m_gradientRepeatLabel->setVisible(isGradient);
+    m_gradientRepeatCombo->setVisible(isGradient);
+    m_gradientTransparencyCheck->setVisible(isGradient);
     m_blendModeLabel->setVisible(t == ToolType::Brush);
     m_blendModeCombo->setVisible(t == ToolType::Brush);
 
@@ -508,7 +541,9 @@ void ToolOptionsPanel::populateVariantCombo() {
         m_variantCombo->setCurrentIndex(static_cast<int>(shape->shapeType()));
     } else if (auto *grad = dynamic_cast<GradientTool*>(m_tool)) {
         m_variantLabel->setText(TR("Type :"));
-        m_variantCombo->addItems({TR("Linéaire"), TR("Radial"), TR("Conique"), TR("Losange")});
+        // Order must match the GradientType enum.
+        m_variantCombo->addItems({TR("Linéaire"), TR("Linéaire réfléchi"), TR("Radial"),
+                                  TR("Conique"), TR("Losange"), TR("Spirale")});
         m_variantCombo->setCurrentIndex(static_cast<int>(grad->gradientType()));
     } else if (auto *line = dynamic_cast<LineTool*>(m_tool)) {
         m_variantLabel->setText(TR("Style :"));
@@ -548,6 +583,20 @@ void ToolOptionsPanel::onVariantChanged(int index) {
 
 void ToolOptionsPanel::onFillStyleChanged(int index) {
     if (m_tool && index >= 0) { m_tool->setFillStyle(index); emit toolOptionsChanged(); }
+}
+
+void ToolOptionsPanel::onGradientRepeatChanged(int index) {
+    if (auto *grad = dynamic_cast<GradientTool*>(m_tool)) {
+        grad->setRepeatMode(static_cast<GradientRepeat>(qBound(0, index, 2)));
+        emit toolOptionsChanged();
+    }
+}
+
+void ToolOptionsPanel::onGradientTransparencyToggled(bool checked) {
+    if (auto *grad = dynamic_cast<GradientTool*>(m_tool)) {
+        grad->setTransparencyMode(checked);
+        emit toolOptionsChanged();
+    }
 }
 
 void ToolOptionsPanel::onCornerSizeChanged(int value) {
@@ -618,6 +667,16 @@ void ToolOptionsPanel::retranslate() {
         m_alignCombo->setCurrentIndex(a < 0 ? 0 : a);
         m_alignCombo->blockSignals(false);
     }
+    m_gradientRepeatLabel->setText(TR("Répétition :"));
+    {
+        const int r = m_gradientRepeatCombo->currentIndex();
+        m_gradientRepeatCombo->blockSignals(true);
+        m_gradientRepeatCombo->clear();
+        m_gradientRepeatCombo->addItems({TR("Aucune"), TR("Répéter"), TR("Réfléchir")});
+        m_gradientRepeatCombo->setCurrentIndex(r < 0 ? 0 : r);
+        m_gradientRepeatCombo->blockSignals(false);
+    }
+    m_gradientTransparencyCheck->setText(TR("Transparence"));
     m_antialiasCheck->setText(TR("Anticrénelage"));
     m_pressureCheck->setText(TR("Pression"));
     m_pressureCheck->setToolTip(TR("Sensibilité à la pression du stylet (varie la taille du point)"));

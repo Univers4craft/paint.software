@@ -44,6 +44,9 @@ private slots:
     void onBlendModeChanged(int index);
     void onFillModeChanged(int index);
     void onFillStyleChanged(int index);
+    // Gradient tool: repeat mode + transparency toggle.
+    void onGradientRepeatChanged(int index);
+    void onGradientTransparencyToggled(bool checked);
     void onCornerSizeChanged(int value);
     void onSpacingChanged(int value);
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
@@ -101,6 +104,11 @@ private:
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     QLabel *m_variantLabel;
     QComboBox *m_variantCombo;
+
+    // Gradient tool: repeat mode dropdown + transparency (alpha-only) checkbox.
+    QLabel *m_gradientRepeatLabel;
+    QComboBox *m_gradientRepeatCombo;
+    QCheckBox *m_gradientTransparencyCheck;
 
     QLabel *m_blendModeLabel;
     QComboBox *m_blendModeCombo;

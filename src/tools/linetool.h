@@ -24,6 +24,14 @@ public:
     LineStyle lineStyle() const { return m_lineStyle; }
     void setLineStyle(LineStyle s) { m_lineStyle = s; }
 
+    // The shape the four control nubs describe, matching Paint.NET's Line/Curve:
+    //  - Straight:    a polyline straight through all four nubs.
+    //  - CubicSpline: a smooth curve interpolating (passing through) all four nubs.
+    //  - Bezier:      end nubs are anchors, inner nubs are handles (default).
+    enum class CurveType { Straight, CubicSpline, Bezier };
+    CurveType curveType() const { return m_curveType; }
+    void setCurveType(CurveType t) { m_curveType = t; }
+
 private:
     enum class State { Idle, Dragging, Editing };
 
@@ -32,6 +40,9 @@ private:
     void setStraight(const QPointF &a, const QPointF &b);
     // Index of a node within grab distance of a widget-space point, or -1.
     int nodeAt(const QPointF &widgetPos, const CanvasWidget &canvas) const;
+    // Builds the path between the four control nubs per the current CurveType,
+    // in an arbitrary coordinate space (the four supplied points).
+    static QPainterPath buildPath(CurveType type, const std::array<QPointF, 4> &pts);
     QPainterPath curvePath() const;
     void paintCurve(QPainter &painter, const QColor &color, bool antialiased) const;
     void commit(CanvasWidget &canvas);
@@ -42,4 +53,5 @@ private:
     QColor m_color;
     QImage m_beforeImage;
     LineStyle m_lineStyle = LineStyle::Solid;
+    CurveType m_curveType = CurveType::Bezier;   // default preserves current behaviour
 };

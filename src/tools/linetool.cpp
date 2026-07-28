@@ -27,10 +27,44 @@ int LineTool::nodeAt(const QPointF &widgetPos, const CanvasWidget &canvas) const
     return best;
 }
 
-QPainterPath LineTool::curvePath() const {
-    QPainterPath path(m_pts[0]);
-    path.cubicTo(m_pts[1], m_pts[2], m_pts[3]);
+QPainterPath LineTool::buildPath(CurveType type, const std::array<QPointF, 4> &pts) {
+    QPainterPath path(pts[0]);
+    switch (type) {
+    case CurveType::Straight:
+        // A polyline running straight through all four nubs.
+        path.lineTo(pts[1]);
+        path.lineTo(pts[2]);
+        path.lineTo(pts[3]);
+        break;
+    case CurveType::CubicSpline: {
+        // A Catmull-Rom spline interpolating all four nubs, expressed as three
+        // cubic Bézier segments. The tangent at each interior point follows the
+        // line between its neighbours; the endpoints reuse their sole neighbour
+        // (a natural, non-overshooting end condition). Standard conversion:
+        // for a segment P1->P2 with neighbours P0 and P3, the Bézier controls are
+        //   C1 = P1 + (P2 - P0) / 6,  C2 = P2 - (P3 - P1) / 6.
+        const QPointF p[4] = {pts[0], pts[1], pts[2], pts[3]};
+        for (int i = 0; i < 3; ++i) {
+            const QPointF p0 = (i == 0) ? p[0] : p[i - 1];
+            const QPointF p1 = p[i];
+            const QPointF p2 = p[i + 1];
+            const QPointF p3 = (i == 2) ? p[3] : p[i + 2];
+            const QPointF c1 = p1 + (p2 - p0) / 6.0;
+            const QPointF c2 = p2 - (p3 - p1) / 6.0;
+            path.cubicTo(c1, c2, p2);
+        }
+        break;
+    }
+    case CurveType::Bezier:
+        // End nubs are anchors, inner nubs are the cubic Bézier's handles.
+        path.cubicTo(pts[1], pts[2], pts[3]);
+        break;
+    }
     return path;
+}
+
+QPainterPath LineTool::curvePath() const {
+    return buildPath(m_curveType, m_pts);
 }
 
 void LineTool::paintCurve(QPainter &painter, const QColor &color, bool antialiased) const {
@@ -153,10 +187,10 @@ void LineTool::drawOverlay(QPainter &painter, const CanvasWidget &canvas) {
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setOpacity(m_opacity / 100.0);
     painter.setPen(pen);
-    QPainterPath path(canvas.canvasToWidget(m_pts[0]));
-    path.cubicTo(canvas.canvasToWidget(m_pts[1]), canvas.canvasToWidget(m_pts[2]),
-                 canvas.canvasToWidget(m_pts[3]));
-    painter.drawPath(path);
+    const std::array<QPointF, 4> widgetPts = {
+        canvas.canvasToWidget(m_pts[0]), canvas.canvasToWidget(m_pts[1]),
+        canvas.canvasToWidget(m_pts[2]), canvas.canvasToWidget(m_pts[3])};
+    painter.drawPath(buildPath(m_curveType, widgetPts));
     painter.restore();
 
     if (m_state != State::Editing) return;

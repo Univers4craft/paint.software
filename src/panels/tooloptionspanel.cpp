@@ -177,6 +177,19 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     connect(m_variantCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ToolOptionsPanel::onVariantChanged);
 
+    // --- Curve type (Line/Curve tool: Straight / Cubic Spline / Bézier) ---
+    m_curveTypeLabel = new QLabel(TR("Courbe :"));
+    m_curveTypeLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_curveTypeLabel);
+    m_curveTypeCombo = new QComboBox;
+    // Order must match the LineTool::CurveType enum.
+    m_curveTypeCombo->addItems({TR("Ligne droite"), TR("Spline"), TR("Bézier")});
+    m_curveTypeCombo->setFixedHeight(20);
+    m_curveTypeCombo->setFixedWidth(90);
+    layout->addWidget(m_curveTypeCombo);
+    connect(m_curveTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onCurveTypeChanged);
+
     // --- Gradient repeat mode (Paint.NET: None / Repeat / Reflect) ---
     m_gradientRepeatLabel = new QLabel(TR("Répétition :"));
     m_gradientRepeatLabel->setStyleSheet("font-size: 11px;");
@@ -457,6 +470,13 @@ void ToolOptionsPanel::updateFromTool() {
 
     populateVariantCombo();
 
+    // Curve type: reflect the active Line/Curve tool.
+    if (auto *line = dynamic_cast<LineTool*>(m_tool)) {
+        m_curveTypeCombo->blockSignals(true);
+        m_curveTypeCombo->setCurrentIndex(static_cast<int>(line->curveType()));
+        m_curveTypeCombo->blockSignals(false);
+    }
+
     // Show only the controls that apply to this tool.
     const ToolType t = m_tool->type();
     const bool isBrushLike = (t == ToolType::Brush || t == ToolType::Eraser || t == ToolType::CloneStamp);
@@ -496,6 +516,10 @@ void ToolOptionsPanel::updateFromTool() {
                              || t == ToolType::Fill);
     m_variantLabel->setVisible(hasVariant);
     m_variantCombo->setVisible(hasVariant);
+    // Curve type is a Line/Curve-only control.
+    const bool hasCurveType = (t == ToolType::Line);
+    m_curveTypeLabel->setVisible(hasCurveType);
+    m_curveTypeCombo->setVisible(hasCurveType);
     // Gradient-only controls: repeat mode + transparency toggle.
     const bool isGradient = (t == ToolType::Gradient);
     m_gradientRepeatLabel->setVisible(isGradient);
@@ -663,6 +687,13 @@ void ToolOptionsPanel::onVariantChanged(int index) {
     emit toolOptionsChanged();
 }
 
+void ToolOptionsPanel::onCurveTypeChanged(int index) {
+    if (auto *line = dynamic_cast<LineTool*>(m_tool)) {
+        line->setCurveType(static_cast<LineTool::CurveType>(qBound(0, index, 2)));
+        emit toolOptionsChanged();
+    }
+}
+
 void ToolOptionsPanel::onFillStyleChanged(int index) {
     if (m_tool && index >= 0) { m_tool->setFillStyle(index); emit toolOptionsChanged(); }
 }
@@ -789,6 +820,16 @@ void ToolOptionsPanel::retranslate() {
     m_fillCombo->blockSignals(false);
 
     populateVariantCombo();
+
+    m_curveTypeLabel->setText(TR("Courbe :"));
+    {
+        const int c = m_curveTypeCombo->currentIndex();
+        m_curveTypeCombo->blockSignals(true);
+        m_curveTypeCombo->clear();
+        m_curveTypeCombo->addItems({TR("Ligne droite"), TR("Spline"), TR("Bézier")});
+        m_curveTypeCombo->setCurrentIndex(c < 0 ? 0 : c);
+        m_curveTypeCombo->blockSignals(false);
+    }
 
     // Rebuild the tool dropdown labels, keeping the current selection.
     const int cur = m_toolCombo->currentIndex();

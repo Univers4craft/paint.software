@@ -53,6 +53,8 @@ private slots:
     void onSpacingChanged(int value);
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     void onVariantChanged(int index);
+    // Line/Curve tool: curve type (Straight / Cubic Spline / Bézier).
+    void onCurveTypeChanged(int index);
     // Text tool.
     void onFontChanged(const QFont &font);
     void onFontSizeChanged(int value);
@@ -106,6 +108,11 @@ private:
     // Tool-specific variant: shape type / gradient type / line style / flood mode.
     QLabel *m_variantLabel;
     QComboBox *m_variantCombo;
+
+    // Line/Curve tool: curve type (Straight / Cubic Spline / Bézier), a second
+    // dedicated combo so the LineStyle variant combo still works.
+    QLabel *m_curveTypeLabel;
+    QComboBox *m_curveTypeCombo;
 
     // Gradient tool: repeat mode dropdown + transparency (alpha-only) checkbox.
     QLabel *m_gradientRepeatLabel;

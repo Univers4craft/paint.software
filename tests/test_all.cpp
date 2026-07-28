@@ -2151,6 +2151,59 @@ int main(int argc, char **argv) {
               "Escape cancels the line — nothing is painted");
     }
 
+    SECTION("Line / Curve tool: curve type shapes the committed path");
+    {
+        // Lay a line, bend an inner nub off-axis, then commit under each curve
+        // type. Straight (polyline) and Bézier build different shapes from the
+        // same nubs, and the Cubic Spline is verified to pass through the moved
+        // interior nub (interpolating), unlike the Bézier which only approaches it.
+        auto committedFor = [](LineTool::CurveType type, QPointF bendTo) {
+            Document doc(64, 64);
+            doc.activeLayer()->clear(Qt::white);
+            doc.setPrimaryColor(Qt::red);
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            LineTool line;
+            line.setCurveType(type);
+            // Drag out the straight base line; the tool drops into edit mode.
+            strokeTool(&line, canvas, QPointF(8, 8), QPointF(56, 56));
+            // Grab inner nub #1 (at canvas (24,24)) and drag it off the axis.
+            const QPointF nubW = canvas.canvasToWidget(QPointF(24, 24));
+            QMouseEvent gp(QEvent::MouseButtonPress, nubW, nubW,
+                           Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            line.mousePressEvent(canvas.widgetToCanvas(nubW), &gp, canvas);
+            QMouseEvent gm = moveEv(bendTo);
+            line.mouseMoveEvent(bendTo, &gm, canvas);
+            QMouseEvent gr = releaseEv(bendTo);
+            line.mouseReleaseEvent(bendTo, &gr, canvas);
+            line.deactivate(canvas);   // commit
+            return doc.activeLayer()->image().copy();
+        };
+
+        const QPointF bend(24, 4);   // pull nub #1 well above the diagonal
+        QImage straight = committedFor(LineTool::CurveType::Straight, bend);
+        QImage bezier   = committedFor(LineTool::CurveType::Bezier, bend);
+        QImage spline   = committedFor(LineTool::CurveType::CubicSpline, bend);
+
+        CHECK(imagesDiffer(straight, bezier),
+              "Straight and Bézier produce different rasters from the same nubs");
+        CHECK(imagesDiffer(spline, bezier),
+              "Cubic Spline differs from Bézier for the same nubs");
+
+        // The spline interpolates the moved nub: a painted pixel sits right on it.
+        auto paintedNear = [](const QImage &img, QPointF p, int r) {
+            for (int dy = -r; dy <= r; ++dy)
+                for (int dx = -r; dx <= r; ++dx) {
+                    const int x = int(p.x()) + dx, y = int(p.y()) + dy;
+                    if (x < 0 || y < 0 || x >= img.width() || y >= img.height()) continue;
+                    if (img.pixelColor(x, y) != QColor(Qt::white)) return true;
+                }
+            return false;
+        };
+        CHECK(paintedNear(spline, bend, 2),
+              "Cubic Spline passes through the interior nub");
+    }
+
     SECTION("Shape tool: editable before commit (Paint.NET)");
     {
         // Like the Line/Curve tool, dragging a shape lays out its bounding box but

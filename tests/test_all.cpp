@@ -1538,15 +1538,28 @@ int main(int argc, char **argv) {
         CHECK(doc.layerAt(idx)->image().pixelColor(120, 50).alpha() == 0,
               "the rest of the canvas-sized layer is transparent");
 
-        // Simulate the Move tool's whole-layer bake (moved buffer = layer size):
-        // with a canvas-sized layer, shifting +100px keeps the red block intact
-        // at its new position instead of clipping it away.
-        const QImage before = doc.layerAt(idx)->image();
-        QImage moved(before.size(), QImage::Format_ARGB32_Premultiplied);
-        moved.fill(Qt::transparent);
-        { QPainter p(&moved); p.drawImage(QPoint(100, 0), before); }
-        CHECK(moved.pixelColor(110, 10) == QColor(Qt::red),
-              "moving the pasted layer +100px keeps its pixels (no clip to paste box)");
+        // Drive the REAL Move tool end-to-end (no selection = whole-layer move),
+        // which is the code path that used to clip to the paste box. Grab inside
+        // the red block and drag it +100px right; it must arrive intact.
+        {
+            CanvasWidget canvas;
+            canvas.setDocument(&doc);
+            canvas.setZoom(1.0);
+            MoveTool tool;
+            const QPointF from(20, 20), to(120, 20);
+            QMouseEvent e1(QEvent::MouseButtonPress, from, from, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mousePressEvent(from, &e1, canvas);
+            QMouseEvent e2(QEvent::MouseMove, to, to, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            tool.mouseMoveEvent(to, &e2, canvas);
+            QMouseEvent e3(QEvent::MouseButtonRelease, to, to, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            tool.mouseReleaseEvent(to, &e3, canvas);
+
+            const QImage &after = doc.layerAt(idx)->image();
+            CHECK(after.pixelColor(130, 20) == QColor(Qt::red),
+                  "Move tool: pasted block travels +100px intact (right edge not clipped)");
+            CHECK(after.pixelColor(10, 20).alpha() == 0,
+                  "Move tool: the block really moved (old position now empty)");
+        }
     }
 
     // ---------- LAYER MOVE / FLIP / IMPORT ----------

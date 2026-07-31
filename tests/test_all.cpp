@@ -1522,6 +1522,33 @@ int main(int argc, char **argv) {
               "artwork on a lower layer shows through a new layer");
     }
 
+    SECTION("Pasted image becomes a canvas-sized layer, movable without clipping");
+    {
+        // A pasted image smaller than the canvas must land on a canvas-sized
+        // layer, so it can be moved across the canvas instead of being clipped to
+        // its own little box (issue #18).
+        Document doc(200, 100);
+        QImage paste(40, 40, QImage::Format_ARGB32);
+        paste.fill(Qt::red);
+        const int idx = doc.addLayer(paste, "Calque collé");
+        CHECK(doc.layerAt(idx)->image().size() == QSize(200, 100),
+              "pasted layer is canvas-sized, not paste-sized");
+        CHECK(doc.layerAt(idx)->image().pixelColor(10, 10) == QColor(Qt::red),
+              "the pasted pixels are placed at the top-left");
+        CHECK(doc.layerAt(idx)->image().pixelColor(120, 50).alpha() == 0,
+              "the rest of the canvas-sized layer is transparent");
+
+        // Simulate the Move tool's whole-layer bake (moved buffer = layer size):
+        // with a canvas-sized layer, shifting +100px keeps the red block intact
+        // at its new position instead of clipping it away.
+        const QImage before = doc.layerAt(idx)->image();
+        QImage moved(before.size(), QImage::Format_ARGB32_Premultiplied);
+        moved.fill(Qt::transparent);
+        { QPainter p(&moved); p.drawImage(QPoint(100, 0), before); }
+        CHECK(moved.pixelColor(110, 10) == QColor(Qt::red),
+              "moving the pasted layer +100px keeps its pixels (no clip to paste box)");
+    }
+
     // ---------- LAYER MOVE / FLIP / IMPORT ----------
     SECTION("Layer move / flip / import");
     {

@@ -117,7 +117,20 @@ int Document::addLayer(const QString &name) {
 
 int Document::addLayer(const QImage &image, const QString &name) {
     QString layerName = name.isEmpty() ? QString("Layer %1").arg(m_layers.size() + 1) : name;
-    auto layer = std::make_shared<Layer>(image, layerName);
+    // Every layer must be canvas-sized — the Move tool and other tools assume it.
+    // A pasted/imported image that was smaller than the canvas used to become a
+    // layer of its own size, so moving it clipped the pixels to that little box
+    // instead of letting them travel across the canvas (issue #18). Composite the
+    // image into a canvas-sized transparent layer at the top-left. (An image that
+    // already matches the canvas — e.g. a layer restored from a .psw — is copied
+    // unchanged.)
+    QImage canvasSized(m_width, m_height, QImage::Format_ARGB32_Premultiplied);
+    canvasSized.fill(Qt::transparent);
+    {
+        QPainter p(&canvasSized);
+        p.drawImage(0, 0, image);
+    }
+    auto layer = std::make_shared<Layer>(canvasSized, layerName);
     int index = m_activeLayer + 1;
     m_layers.insert(m_layers.begin() + index, layer);
 

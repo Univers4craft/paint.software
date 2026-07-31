@@ -1898,6 +1898,42 @@ int main(int argc, char **argv) {
         }
     }
 
+    SECTION("Brush keeps drawing when alternating primary/secondary buttons (issue #17)");
+    {
+        // Releasing one of two held buttons must not cut the stroke, and a second
+        // button pressed mid-stroke must not restart it. Paul-Coy saw the mouse
+        // stop drawing at the primary<->secondary transition.
+        Document doc(64, 64);
+        doc.activeLayer()->clear(Qt::white);
+        doc.setPrimaryColor(Qt::black);
+        CanvasWidget canvas; canvas.setDocument(&doc); canvas.setZoom(1.0);
+        BrushTool brush; brush.setBrushSize(6);
+
+        const QPointF a(10, 32), b(30, 32), c(50, 32);
+        // Press LEFT and draw a->b.
+        QMouseEvent p1(QEvent::MouseButtonPress, a, a, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        brush.mousePressEvent(a, &p1, canvas);
+        QMouseEvent m1(QEvent::MouseMove, b, b, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        brush.mouseMoveEvent(b, &m1, canvas);
+        // Press RIGHT too (both held) — must NOT restart the stroke.
+        QMouseEvent p2(QEvent::MouseButtonPress, b, b, Qt::RightButton, Qt::LeftButton | Qt::RightButton, Qt::NoModifier);
+        brush.mousePressEvent(b, &p2, canvas);
+        // Release LEFT while RIGHT is still held — the stroke must continue.
+        QMouseEvent r1(QEvent::MouseButtonRelease, b, b, Qt::LeftButton, Qt::RightButton, Qt::NoModifier);
+        brush.mouseReleaseEvent(b, &r1, canvas);
+        // Move to c — this segment must still paint (drawing didn't stop).
+        QMouseEvent m2(QEvent::MouseMove, c, c, Qt::NoButton, Qt::RightButton, Qt::NoModifier);
+        brush.mouseMoveEvent(c, &m2, canvas);
+        // Release the LAST button — now the stroke ends.
+        QMouseEvent r2(QEvent::MouseButtonRelease, c, c, Qt::RightButton, Qt::NoButton, Qt::NoModifier);
+        brush.mouseReleaseEvent(c, &r2, canvas);
+
+        const QImage &img = doc.activeLayer()->image();
+        CHECK(qGray(img.pixel(20, 32)) < 200, "first half of the stroke painted");
+        CHECK(qGray(img.pixel(40, 32)) < 200,
+              "stroke continued past the button switch (no gap where it stopped)");
+    }
+
     // ---------- MOVE SELECTION TOOL ----------
     SECTION("Move Selection tool");
     {

@@ -449,7 +449,12 @@ void CanvasWidget::mousePressEvent(QMouseEvent *event) {
         // A real mouse press (not synthesised from a stylus) always means full
         // pressure. Without this, a low-pressure stylus stroke left m_pressure
         // stuck near 0 and the mouse brush kept drawing faint until restart (#16).
-        if (event->source() == Qt::MouseEventNotSynthesized) {
+        // But NEVER reset while the pen tip is in contact: on some drivers the
+        // stylus press (tip or barrel button) is reported as a non-synthesised
+        // mouse event, and resetting to 1.0 then made the first primary dab a
+        // full-size blob and killed pressure on the secondary (barrel) stroke
+        // (issue #17). During contact the tablet drives the pressure.
+        if (event->source() == Qt::MouseEventNotSynthesized && !m_penInContact) {
             m_pressure = 1.0;
             m_currentTool->setPressure(1.0);
         }

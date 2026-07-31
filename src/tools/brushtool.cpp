@@ -8,6 +8,10 @@
 
 void BrushTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
+    // A second draw-button pressed mid-stroke must not restart the stroke — that
+    // reset the buffer and broke drawing when alternating primary/secondary
+    // (issue #17). One continuous stroke keeps its starting colour.
+    if (m_drawing) return;
     auto *doc = canvas.document();
     auto *layer = doc->activeLayer();
     if (!layer || layer->isLocked()) return;
@@ -41,8 +45,11 @@ void BrushTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, Can
     compositeStroke(doc, layer, m_strokeColor);
 }
 
-void BrushTool::mouseReleaseEvent(const QPointF &, QMouseEvent *, CanvasWidget &canvas) {
+void BrushTool::mouseReleaseEvent(const QPointF &, QMouseEvent *event, CanvasWidget &canvas) {
     if (!m_drawing) return;
+    // Keep drawing while another draw-button is still held — releasing one of two
+    // pressed buttons must not cut the stroke (issue #17).
+    if (event->buttons() & (Qt::LeftButton | Qt::RightButton)) return;
     m_drawing = false;
     auto *layer = canvas.document()->activeLayer();
     if (layer && layer->image() != m_beforeImage)   // skip no-op strokes (no empty undo step)

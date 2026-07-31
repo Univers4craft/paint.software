@@ -7,6 +7,7 @@
 
 void EraserTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
+    if (m_drawing) return;   // a 2nd button mid-stroke must not restart it (issue #17)
     auto *doc = canvas.document();
     auto *layer = doc->activeLayer();
     if (!layer || layer->isLocked()) return;
@@ -33,8 +34,9 @@ void EraserTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *, CanvasW
     compositeErase(doc, layer);
 }
 
-void EraserTool::mouseReleaseEvent(const QPointF &, QMouseEvent *, CanvasWidget &canvas) {
+void EraserTool::mouseReleaseEvent(const QPointF &, QMouseEvent *event, CanvasWidget &canvas) {
     if (!m_drawing) return;
+    if (event->buttons() & (Qt::LeftButton | Qt::RightButton)) return;   // keep erasing while a button is held (issue #17)
     m_drawing = false;
     auto *layer = canvas.document()->activeLayer();
     if (layer && layer->image() != m_beforeImage)   // skip no-op strokes (no empty undo step)

@@ -1906,6 +1906,7 @@ int main(int argc, char **argv) {
         Document doc(64, 64);
         doc.activeLayer()->clear(Qt::white);
         doc.setPrimaryColor(Qt::black);
+        doc.setSecondaryColor(Qt::red);
         CanvasWidget canvas; canvas.setDocument(&doc); canvas.setZoom(1.0);
         BrushTool brush; brush.setBrushSize(6);
 
@@ -1929,9 +1930,13 @@ int main(int argc, char **argv) {
         brush.mouseReleaseEvent(c, &r2, canvas);
 
         const QImage &img = doc.activeLayer()->image();
-        CHECK(qGray(img.pixel(20, 32)) < 200, "first half of the stroke painted");
-        CHECK(qGray(img.pixel(40, 32)) < 200,
-              "stroke continued past the button switch (no gap where it stopped)");
+        // First half = primary (black); the segment must actually be painted.
+        CHECK(qGray(img.pixel(20, 32)) < 120, "first half painted in the primary colour");
+        // Second half painted (no gap) AND in the SECONDARY colour — the button
+        // switch now changes colour mid-line instead of stopping (issue #17).
+        const QColor c2 = img.pixelColor(40, 32);
+        CHECK(c2.alpha() > 0 && c2.red() > 180 && c2.green() < 90 && c2.blue() < 90,
+              "stroke continued past the switch and turned secondary (no gap)");
     }
 
     // ---------- MOVE SELECTION TOOL ----------

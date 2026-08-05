@@ -12,6 +12,14 @@
 
 bool CanvasWidget::event(QEvent *event)
 {
+    // Track when the stylus is within range of the tablet. While it hovers there
+    // (in proximity but tip not touching), nothing draws — not even a barrel/
+    // right-button press, which otherwise painted a hover blob (issue #17). The
+    // gate is only armed while the pen is in proximity, so the mouse is never
+    // affected.
+    if (event->type() == QEvent::TabletEnterProximity) { m_penInProximity = true; return true; }
+    if (event->type() == QEvent::TabletLeaveProximity) { m_penInProximity = false; m_penInContact = false; return true; }
+
     // Qt matches single-key shortcuts (B, E, S…) before the key reaches
     // keyPressEvent, so while the Text tool is typing those letters would trigger
     // a tool switch and never be typed — ~60% of the alphabet vanished. Accepting
@@ -439,9 +447,12 @@ void CanvasWidget::mousePressEvent(QMouseEvent *event) {
     }
 
     // A stylus that is only hovering (tip not touching) still makes Qt synthesise
-    // mouse events — including button presses from the barrel button. Drop those
-    // so hovering never paints (issue #17). Real mouse presses are never gated.
-    if (event->source() != Qt::MouseEventNotSynthesized && !m_penInContact)
+    // mouse events — including button presses from the barrel button — that
+    // painted a hover blob (issue #17). Drop any press while the pen is not in
+    // contact, whether the event is synthesised OR arrives while the pen is in
+    // proximity. Real mouse presses (pen away, not synthesised) are never gated.
+    const bool fromPen = m_penInProximity || event->source() != Qt::MouseEventNotSynthesized;
+    if (fromPen && !m_penInContact)
         return;
 
     if (m_currentTool && m_document) {
@@ -481,7 +492,8 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *event) {
     // A hovering stylus (tip not touching) must not draw, even if it synthesises
     // move events with a button held (issue #17). The cursor position above is
     // still updated so the status bar tracks the hover.
-    if (event->source() != Qt::MouseEventNotSynthesized && !m_penInContact)
+    const bool fromPen = m_penInProximity || event->source() != Qt::MouseEventNotSynthesized;
+    if (fromPen && !m_penInContact)
         return;
 
     if (m_currentTool && m_document) {

@@ -8,18 +8,24 @@
 
 void BrushTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
     if (event->button() != Qt::LeftButton && event->button() != Qt::RightButton) return;
-    // A second draw-button pressed mid-stroke must not restart the stroke — that
-    // reset the buffer and broke drawing when alternating primary/secondary
-    // (issue #17). One continuous stroke keeps its starting colour.
-    if (m_drawing) return;
     auto *doc = canvas.document();
     auto *layer = doc->activeLayer();
     if (!layer || layer->isLocked()) return;
+
+    const QColor col = (event->button() == Qt::LeftButton) ? doc->primaryColor() : doc->secondaryColor();
+
+    // A second draw-button pressed mid-stroke switches the colour without breaking
+    // the line, rather than stopping or restarting the stroke (issue #17).
+    if (m_drawing) {
+        if (col != m_strokeColor) switchColour(doc, layer, col);
+        return;
+    }
 
     m_drawing = true;
     m_lastPos = canvasPos;
     m_currentPos = canvasPos;
     m_beforeImage = layer->image().copy();
+    m_baseImage = m_beforeImage;
 
     // The stroke is accumulated at full opacity in its own buffer, then
     // composited onto the layer once at the tool opacity. This keeps the whole
@@ -27,9 +33,17 @@ void BrushTool::mousePressEvent(const QPointF &canvasPos, QMouseEvent *event, Ca
     m_strokeBuffer = QImage(layer->image().size(), QImage::Format_ARGB32_Premultiplied);
     m_strokeBuffer.fill(Qt::transparent);
 
-    m_strokeColor = (event->button() == Qt::LeftButton) ? doc->primaryColor() : doc->secondaryColor();
+    m_strokeColor = col;
     drawBrushDab(canvasPos, m_strokeColor);
     compositeStroke(doc, layer, m_strokeColor);
+}
+
+void BrushTool::switchColour(Document *doc, Layer *layer, const QColor &color) {
+    // Bake the coverage drawn so far into the base, then continue in the new
+    // colour from the current point (no gap).
+    m_baseImage = layer->image().copy();
+    m_strokeBuffer.fill(Qt::transparent);
+    m_strokeColor = color;
 }
 
 void BrushTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, CanvasWidget &canvas) {
@@ -47,14 +61,23 @@ void BrushTool::mouseMoveEvent(const QPointF &canvasPos, QMouseEvent *event, Can
 
 void BrushTool::mouseReleaseEvent(const QPointF &, QMouseEvent *event, CanvasWidget &canvas) {
     if (!m_drawing) return;
-    // Keep drawing while another draw-button is still held — releasing one of two
-    // pressed buttons must not cut the stroke (issue #17).
-    if (event->buttons() & (Qt::LeftButton | Qt::RightButton)) return;
+    auto *doc = canvas.document();
+    auto *layer = doc ? doc->activeLayer() : nullptr;
+    // Releasing one of two held buttons must not cut the stroke — keep drawing in
+    // the still-held button's colour (issue #17).
+    if (event->buttons() & (Qt::LeftButton | Qt::RightButton)) {
+        if (layer) {
+            const QColor col = (event->buttons() & Qt::LeftButton) ? doc->primaryColor()
+                                                                   : doc->secondaryColor();
+            if (col != m_strokeColor) switchColour(doc, layer, col);
+        }
+        return;
+    }
     m_drawing = false;
-    auto *layer = canvas.document()->activeLayer();
     if (layer && layer->image() != m_beforeImage)   // skip no-op strokes (no empty undo step)
-        canvas.document()->pushImageEdit(canvas.document()->activeLayerIndex(), m_beforeImage, "Paintbrush");
+        doc->pushImageEdit(doc->activeLayerIndex(), m_beforeImage, "Paintbrush");
     m_strokeBuffer = QImage();
+    m_baseImage = QImage();
 }
 
 void BrushTool::drawBrushStroke(const QPointF &from, const QPointF &to, const QColor &color) {
@@ -115,8 +138,9 @@ void BrushTool::compositeStroke(Document *doc, Layer *layer, const QColor &color
         compositeOverwrite(doc, layer, color);
         return;
     }
-    // layer = before + strokeBuffer (at tool opacity * pressure), clipped to selection.
-    QImage result = m_beforeImage.copy();
+    // layer = base + strokeBuffer (at tool opacity), clipped to selection. The
+    // base carries any earlier-colour segments of this same stroke.
+    QImage result = m_baseImage.copy();
     QPainter painter(&result);
     clipToSelection(painter, doc);
     // Opacity no longer depends on pressure — pressure drives dab size instead.
@@ -132,7 +156,7 @@ void BrushTool::compositeOverwrite(Document *doc, Layer *layer, const QColor &co
     // the stroke's coverage, so it can also lower alpha. Only painted pixels are
     // touched — drawing the whole buffer with CompositionMode_Source would wipe
     // every untouched pixel of the layer (the original bug).
-    QImage result = m_beforeImage.convertToFormat(QImage::Format_ARGB32);
+    QImage result = m_baseImage.convertToFormat(QImage::Format_ARGB32);
     const int w = result.width(), h = result.height();
     const double strength = (m_opacity / 100.0);   // pressure drives size, not opacity
     const int tr = color.red(), tg = color.green(), tb = color.blue();

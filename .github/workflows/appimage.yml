@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build qt6-base-dev libgl1-mesa-dev \
+            build-essential cmake ninja-build qt6-base-dev qt6-image-formats-plugins libgl1-mesa-dev \
             libfuse2 file wget desktop-file-utils
 
       - name: Build and install into an AppDir

@@ -40,6 +40,9 @@
 #include "panels/colorspanel.h"
 #include "panels/tooloptionspanel.h"
 #include "core/hatchpatterns.h"
+#include <QImageWriter>
+#include <QImageReader>
+#include <QTemporaryFile>
 #include "dialogs/resizedialog.h"
 #include <QPushButton>
 #include <QComboBox>
@@ -2671,6 +2674,40 @@ int main(int argc, char **argv) {
         };
         CHECK(cornerFilled(0),  "corner size 0 leaves a sharp (filled) corner");
         CHECK(!cornerFilled(30), "a large corner size rounds the corner away");
+    }
+
+    SECTION("WebP import/export round-trips when the codec is present (issue #19)");
+    {
+        // WebP is offered in Open/Save; it works only if Qt's image-format plugin
+        // is installed (the packaging now depends on qt6-image-formats-plugins).
+        // Skip cleanly where the codec is absent (e.g. a bare dev box) so this
+        // isn't a false failure, but exercise the real round-trip in CI where the
+        // plugin is installed.
+        const bool canWrite = QImageWriter::supportedImageFormats().contains("webp");
+        const bool canRead  = QImageReader::supportedImageFormats().contains("webp");
+        if (!canWrite || !canRead) {
+            printf("    (webp codec not installed here — skipped; CI has the plugin)\n");
+        } else {
+            QImage src(40, 30, QImage::Format_ARGB32);
+            for (int y = 0; y < 30; ++y)
+                for (int x = 0; x < 40; ++x)
+                    src.setPixelColor(x, y, QColor(x * 6, y * 8, 120));
+            QTemporaryFile f("XXXXXX.webp");
+            f.setAutoRemove(true);
+            CHECK(f.open(), "temp .webp file opens");
+            const QString path = f.fileName();
+            QImageWriter w(path, "webp");
+            w.setQuality(100);   // near-lossless
+            CHECK(w.write(src), "QImageWriter writes a .webp file");
+            QImage back(path);
+            CHECK(!back.isNull() && back.size() == QSize(40, 30),
+                  "the .webp reloads at the right size");
+            const QColor c = back.convertToFormat(QImage::Format_ARGB32).pixelColor(20, 15);
+            const QColor want(120, 120, 120);
+            CHECK(std::abs(c.red() - want.red()) < 24 && std::abs(c.green() - want.green()) < 24
+                  && std::abs(c.blue() - want.blue()) < 24,
+                  "webp colours round-trip within tolerance");
+        }
     }
 
     // ---------- RESULT ----------

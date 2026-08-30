@@ -241,6 +241,11 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}")
 # resolves the correct package names for the build distro (e.g. the libqt6*t64
 # variants on Ubuntu 24.04), so we do not hard-code a fragile fallback list.
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# WebP and TIFF are decoded/encoded by Qt image-format PLUGINS that are loaded at
+# runtime, not linked — so SHLIBDEPS can't see them. Depend on the plugin package
+# explicitly, otherwise those formats appear in Open/Save but silently fail
+# (issue #19).
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-image-formats-plugins")
 # Qt renders the standard dialog buttons (OK / Cancel / Yes / No) from its own
 # catalogue, which ships separately. Recommends (installed by default) rather than
 # Depends: without it the app runs fine, those buttons just stay English.

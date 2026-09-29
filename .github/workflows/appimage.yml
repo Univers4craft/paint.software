@@ -13,7 +13,11 @@ permissions:
 
 jobs:
   appimage:
-    runs-on: ubuntu-latest
+    # Oldest still-supported Ubuntu LTS, so the resulting AppImage doesn't
+    # link against a glibc newer than what most users' distros ship
+    # (see AppImage/appimage.github.io#6449 — glibc 2.38 from ubuntu-latest
+    # made the AppImage refuse to start on older systems).
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -24,8 +28,21 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build qt6-base-dev qt6-image-formats-plugins libgl1-mesa-dev \
-            libfuse2 file wget desktop-file-utils
+            build-essential cmake ninja-build libgl1-mesa-dev \
+            libfuse2 file wget desktop-file-utils python3-pip \
+            libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-render0 \
+            libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 \
+            libxcb-xinerama0 libxcb-xkb1 libxcb-util1
+          pip install aqtinstall
+
+      - name: Install Qt 6 (aqtinstall — ubuntu-22.04's own Qt6 package is too old)
+        env:
+          QT_VERSION: 6.5.3
+        run: |
+          aqt install-qt linux desktop "$QT_VERSION" gcc_64 -m qtimageformats -O "$GITHUB_WORKSPACE/Qt"
+          echo "$GITHUB_WORKSPACE/Qt/$QT_VERSION/gcc_64/bin" >> "$GITHUB_PATH"
+          echo "QT_ROOT=$GITHUB_WORKSPACE/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
 
       - name: Build and install into an AppDir
         run: |
@@ -33,7 +50,8 @@ jobs:
           VER="${MM}.$(git rev-list --count HEAD)"
           echo "VER=$VER" >> "$GITHUB_ENV"
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DPAINTSW_VERSION="$VER" -DCMAKE_INSTALL_PREFIX=/usr
+            -DPAINTSW_VERSION="$VER" -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT"
           cmake --build build -j
           DESTDIR="$PWD/AppDir" cmake --install build
 
@@ -45,10 +63,11 @@ jobs:
 
       - name: Build the AppImage
         env:
-          QMAKE: /usr/bin/qmake6
+          QMAKE: ${{ env.QT_ROOT }}/bin/qmake6
           EXTRA_QT_MODULES: printsupport
           OUTPUT: paint.software-${{ env.VER }}-x86_64.AppImage
         run: |
+          export LD_LIBRARY_PATH="$QT_ROOT/lib:$LD_LIBRARY_PATH"
           ./linuxdeploy-x86_64.AppImage --appdir AppDir \
             --desktop-file AppDir/usr/share/applications/paint.software.desktop \
             --icon-file AppDir/usr/share/pixmaps/paint.software.png \

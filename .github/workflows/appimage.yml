@@ -63,6 +63,7 @@ jobs:
           EXTRA_QT_MODULES: printsupport
           OUTPUT: paint.software-${{ env.VER }}-x86_64.AppImage
         run: |
+          export LD_LIBRARY_PATH="$QT_ROOT/lib:$LD_LIBRARY_PATH"
           ./linuxdeploy-x86_64.AppImage --appdir AppDir \
             --desktop-file AppDir/usr/share/applications/paint.software.desktop \
             --icon-file AppDir/usr/share/pixmaps/paint.software.png \

@@ -7,6 +7,7 @@
 #include "tools/filltool.h"
 #include "tools/texttool.h"
 #include "tools/recolortool.h"
+#include "tools/selectiontool.h"
 #include "core/hatchpatterns.h"
 #include "core/layer.h"
 #include "toolicons.h"
@@ -316,6 +317,52 @@ ToolOptionsPanel::ToolOptionsPanel(QWidget *parent) : QWidget(parent) {
     layout->insertWidget(layout->indexOf(m_brushSizeCombo) + 1, m_pressureCheck);
     connect(m_pressureCheck, &QCheckBox::toggled, this, &ToolOptionsPanel::onPressureToggled);
 
+    // --- Selection constraint (Normal / Fixed Ratio / Fixed Size) ---
+    m_selectionModeLabel = new QLabel(TR("Mode :"));
+    m_selectionModeLabel->setStyleSheet("font-size: 11px;");
+    layout->addWidget(m_selectionModeLabel);
+    m_selectionModeCombo = new QComboBox;
+    m_selectionModeCombo->addItems({TR("Normal"), TR("Ratio fixe"), TR("Taille fixe")});
+    m_selectionModeCombo->setFixedHeight(20);
+    m_selectionModeCombo->setFixedWidth(100);
+    layout->addWidget(m_selectionModeCombo);
+    connect(m_selectionModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ToolOptionsPanel::onSelectionModeChanged);
+
+    // W × H spin boxes (shared by Fixed Ratio and Fixed Size modes).
+    m_selectionSizeGroup = new QWidget(this);
+    m_selectionSizeGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+    auto *szLayout = new QHBoxLayout(m_selectionSizeGroup);
+    szLayout->setContentsMargins(0, 0, 0, 0);
+    szLayout->setSpacing(3);
+
+    auto *wLabel = new QLabel("W :");
+    wLabel->setStyleSheet("font-size: 11px;");
+    szLayout->addWidget(wLabel);
+    m_selectionWSpin = new QSpinBox;
+    m_selectionWSpin->setRange(1, 32767);
+    m_selectionWSpin->setValue(1);
+    m_selectionWSpin->setKeyboardTracking(false);
+    m_selectionWSpin->setFixedWidth(58);
+    m_selectionWSpin->setFixedHeight(20);
+    szLayout->addWidget(m_selectionWSpin);
+
+    auto *hLabel = new QLabel("H :");
+    hLabel->setStyleSheet("font-size: 11px;");
+    szLayout->addWidget(hLabel);
+    m_selectionHSpin = new QSpinBox;
+    m_selectionHSpin->setRange(1, 32767);
+    m_selectionHSpin->setValue(1);
+    m_selectionHSpin->setKeyboardTracking(false);
+    m_selectionHSpin->setFixedWidth(58);
+    m_selectionHSpin->setFixedHeight(20);
+    szLayout->addWidget(m_selectionHSpin);
+    layout->addWidget(m_selectionSizeGroup);
+    connect(m_selectionWSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &ToolOptionsPanel::onSelectionSizeChanged);
+    connect(m_selectionHSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &ToolOptionsPanel::onSelectionSizeChanged);
+
     layout->addStretch();
 }
 
@@ -425,6 +472,19 @@ void ToolOptionsPanel::updateFromTool() {
         m_samplingCombo->blockSignals(false);
     }
 
+    // Selection constraint: reflect the active Rectangle/Ellipse selection tool.
+    if (auto *sel = dynamic_cast<SelectionTool*>(m_tool)) {
+        m_selectionModeCombo->blockSignals(true);
+        m_selectionModeCombo->setCurrentIndex(static_cast<int>(sel->constraint()));
+        m_selectionModeCombo->blockSignals(false);
+        m_selectionWSpin->blockSignals(true);
+        m_selectionWSpin->setValue(qRound(sel->constraintW()));
+        m_selectionWSpin->blockSignals(false);
+        m_selectionHSpin->blockSignals(true);
+        m_selectionHSpin->setValue(qRound(sel->constraintH()));
+        m_selectionHSpin->blockSignals(false);
+    }
+
     // Recolor target: reflect the active Recolor tool.
     if (auto *rc = dynamic_cast<RecolorTool*>(m_tool)) {
         m_recolorTargetCombo->blockSignals(true);
@@ -475,6 +535,18 @@ void ToolOptionsPanel::updateFromTool() {
         m_curveTypeCombo->blockSignals(true);
         m_curveTypeCombo->setCurrentIndex(static_cast<int>(line->curveType()));
         m_curveTypeCombo->blockSignals(false);
+    }
+
+    // Selection constraint visibility: shown for rect/ellipse selection tools only.
+    const bool isSelection = (m_tool->type() == ToolType::RectSelection
+                              || m_tool->type() == ToolType::EllipseSelection);
+    m_selectionModeLabel->setVisible(isSelection);
+    m_selectionModeCombo->setVisible(isSelection);
+    if (isSelection) {
+        const bool hasSizeFields = (m_selectionModeCombo->currentIndex() != 0);
+        m_selectionSizeGroup->setVisible(hasSizeFields);
+    } else {
+        m_selectionSizeGroup->setVisible(false);
     }
 
     // Show only the controls that apply to this tool.
@@ -621,9 +693,25 @@ void ToolOptionsPanel::onSamplingChanged(int index) {
 }
 
 void ToolOptionsPanel::onRecolorTargetChanged(int index) {
-    // Index 0 = clicked pixel (sampled), 1 = secondary colour (fixed).
     if (auto *rc = dynamic_cast<RecolorTool*>(m_tool)) {
         rc->setSampleSecondary(index == 1);
+        emit toolOptionsChanged();
+    }
+}
+
+void ToolOptionsPanel::onSelectionModeChanged(int index) {
+    if (auto *sel = dynamic_cast<SelectionTool*>(m_tool)) {
+        sel->setConstraint(static_cast<SelectionConstraint>(qBound(0, index, 2)));
+        const bool hasSizeFields = (index != 0);
+        m_selectionSizeGroup->setVisible(hasSizeFields);
+        emit toolOptionsChanged();
+    }
+}
+
+void ToolOptionsPanel::onSelectionSizeChanged() {
+    if (auto *sel = dynamic_cast<SelectionTool*>(m_tool)) {
+        sel->setConstraintW(m_selectionWSpin->value());
+        sel->setConstraintH(m_selectionHSpin->value());
         emit toolOptionsChanged();
     }
 }
@@ -808,6 +896,16 @@ void ToolOptionsPanel::retranslate() {
         m_gradientRepeatCombo->blockSignals(false);
     }
     m_gradientTransparencyCheck->setText(TR("Transparence"));
+    m_selectionModeLabel->setText(TR("Mode :"));
+    {
+        const int sm = m_selectionModeCombo->currentIndex();
+        m_selectionModeCombo->blockSignals(true);
+        m_selectionModeCombo->clear();
+        m_selectionModeCombo->addItems({TR("Normal"), TR("Ratio fixe"), TR("Taille fixe")});
+        m_selectionModeCombo->setCurrentIndex(sm < 0 ? 0 : sm);
+        m_selectionModeCombo->blockSignals(false);
+    }
+
     m_antialiasCheck->setText(TR("Anticrénelage"));
     m_pressureCheck->setText(TR("Pression"));
     m_pressureCheck->setToolTip(TR("Sensibilité à la pression du stylet (varie la taille du point)"));

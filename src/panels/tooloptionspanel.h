@@ -12,6 +12,7 @@
 #include <QEvent>
 
 #include "tools/tool.h"
+#include "tools/selectiontool.h"
 
 class Tool;
 
@@ -44,6 +45,8 @@ private slots:
     void onBlendModeChanged(int index);
     void onSamplingChanged(int index);
     void onRecolorTargetChanged(int index);
+    void onSelectionModeChanged(int index);
+    void onSelectionSizeChanged();
     void onFillModeChanged(int index);
     void onFillStyleChanged(int index);
     // Gradient tool: repeat mode + transparency toggle.
@@ -129,6 +132,13 @@ private:
     // Recolor target (Paint.NET "Sampling"): clicked pixel vs secondary colour.
     QLabel *m_recolorTargetLabel;
     QComboBox *m_recolorTargetCombo;
+
+    // Selection constraint (Normal / Fixed Ratio / Fixed Size), matching paint.NET.
+    QLabel *m_selectionModeLabel;
+    QComboBox *m_selectionModeCombo;
+    QWidget *m_selectionSizeGroup;   // container for the W×H spin boxes
+    QSpinBox *m_selectionWSpin;
+    QSpinBox *m_selectionHSpin;
 
     // Text tool controls.
     QFontComboBox *m_fontCombo;

@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QFile>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <climits>
 #include <tuple>
@@ -20,6 +21,7 @@
 #include "core/selection.h"
 #include "core/history.h"
 #include "core/adjustmentpreview.h"
+#include "core/pdnformat.h"
 #include "canvas/canvaswidget.h"
 #include "i18n.h"
 #include "theme.h"
@@ -673,6 +675,100 @@ static void retainedMergeRegression() {
 }
 
 // =====================================================================
+// Paint.NET .pdn import, checked against files saved by Paint.NET itself
+// (fixtures and reference renders from the MIT-licensed pypdn project).
+static int maxRgbDifference(const QImage &a, const QImage &b) {
+    if (a.size() != b.size()) return INT_MAX;
+    const QImage x = a.convertToFormat(QImage::Format_ARGB32);
+    const QImage y = b.convertToFormat(QImage::Format_ARGB32);
+    int worst = 0;
+    for (int row = 0; row < x.height(); ++row) {
+        const QRgb *p = reinterpret_cast<const QRgb *>(x.constScanLine(row));
+        const QRgb *q = reinterpret_cast<const QRgb *>(y.constScanLine(row));
+        for (int col = 0; col < x.width(); ++col) {
+            worst = std::max({worst, std::abs(qRed(p[col]) - qRed(q[col])),
+                              std::abs(qGreen(p[col]) - qGreen(q[col])),
+                              std::abs(qBlue(p[col]) - qBlue(q[col]))});
+        }
+    }
+    return worst;
+}
+
+static void pdnImportRegression() {
+    SECTION("Paint.NET .pdn import");
+    const QString dir = QStringLiteral(PAINTSW_TEST_DATA_DIR "/pdn/");
+
+    Pdn::ImageData pdn;
+    QString error;
+    CHECK(Pdn::isPdnFile(dir + "Untitled3.pdn"), "recognise the PDN3 signature");
+    CHECK(!Pdn::isPdnFile(dir + "layerVisibleTest1.png"), "a PNG is not a .pdn");
+    const bool read = Pdn::read(dir + "Untitled3.pdn", pdn, &error);
+    CHECK(read, qPrintable("read a Paint.NET 4 document: " + error));
+    if (read) {
+        CHECK(pdn.width == 800 && pdn.height == 600, "document size comes from the file");
+        CHECK(pdn.layers.size() == 2, "both layers are read");
+    }
+    if (read && pdn.layers.size() == 2) {
+        const Pdn::LayerData &background = pdn.layers[0];
+        const Pdn::LayerData &top = pdn.layers[1];
+        CHECK(background.name == "Background" && top.name == "Layer 2", "layer names are kept");
+        CHECK(background.visible && top.visible, "visibility is kept");
+        CHECK(qAbs(top.opacity - 161 / 255.0f) < 1e-4f && background.opacity == 1.0f,
+              "layer opacity is kept");
+        CHECK(top.blendMode == BlendMode::Additive && background.blendMode == BlendMode::Normal,
+              "blend modes are kept");
+        const QImage expected = QImage(dir + "layerVisibleTest1.png").convertToFormat(QImage::Format_ARGB32);
+        bool samePixels = background.image.size() == expected.size();
+        for (int y = 0; samePixels && y < expected.height(); ++y)
+            samePixels = std::memcmp(background.image.constScanLine(y), expected.constScanLine(y),
+                                     size_t(expected.width()) * 4) == 0;
+        CHECK(samePixels, "background pixels match Paint.NET exactly");
+        CHECK(maxRgbDifference(top.image, QImage(dir + "layerVisibleTest2.png")) == 0,
+              "top layer colours match Paint.NET");
+    }
+
+    // Through Document::load, as File > Open does.
+    Document doc(1, 1);
+    CHECK(doc.load(dir + "Untitled3.pdn"), "Document opens a .pdn");
+    CHECK(doc.layerCount() == 2 && doc.width() == 800 && doc.height() == 600,
+          "opened document keeps every layer");
+    CHECK(doc.activeLayerIndex() == doc.layerCount() - 1, "the top layer is active, like Paint.NET");
+    CHECK(doc.layerAt(1) && doc.layerAt(1)->blendMode() == BlendMode::Additive,
+          "opened layer keeps its blend mode");
+    CHECK(!doc.isModified() && doc.history().canUndo() == false, "a freshly opened .pdn is clean");
+    CHECK(Document::isOpenOnlyFormat(doc.filePath()), "Save is redirected away from .pdn");
+
+    // Paint.NET 3.5 files store the blend op as an object instead of an enum.
+    Document old(1, 1);
+    CHECK(old.load(dir + "oldPDN3510.pdn"), "open a Paint.NET 3.5 document");
+    CHECK(old.layerCount() == 2, "Paint.NET 3.5 layers are read");
+    for (int i = 0; i < old.layerCount(); ++i) old.layerAt(i)->setVisible(true);
+    CHECK(maxRgbDifference(old.flattenVisible(), QImage(dir + "oldPDN3510.png")) <= 2,
+          "Paint.NET 3.5 document renders like Paint.NET");
+
+    // Damaged files must fail cleanly, never crash or hang.
+    QFile file(dir + "Untitled3.pdn");
+    CHECK(file.open(QIODevice::ReadOnly), "read fixture bytes");
+    const QByteArray bytes = file.readAll();
+    bool truncatedRejected = true;
+    for (int cut = 0; cut < bytes.size(); cut += 97) {
+        Pdn::ImageData ignored;
+        truncatedRejected &= !Pdn::read(bytes.left(cut), ignored);
+    }
+    CHECK(truncatedRejected, "truncated files are rejected");
+    quint32 seed = 12345;
+    for (int round = 0; round < 300; ++round) {
+        QByteArray damaged = bytes;
+        for (int k = 0; k < 4; ++k) {
+            seed = seed * 1664525u + 1013904223u;
+            damaged[int(seed % quint32(damaged.size()))] = char(seed >> 24);
+        }
+        Pdn::ImageData ignored;
+        Pdn::read(damaged, ignored);
+    }
+    CHECK(true, "corrupted files do not crash the reader");
+}
+
 int main(int argc, char **argv) {
     QApplication app(argc, argv);
     resizeStraightAlphaCharacterization();
@@ -685,6 +781,7 @@ int main(int argc, char **argv) {
     ordinaryMoveAuthorityRegression();
     nativeRetentionCompatibility();
     retainedMergeRegression();
+    pdnImportRegression();
 
     // ---------- TOOLS ----------
     SECTION("Tools draw into the active layer");

@@ -1,4 +1,5 @@
 #include "document.h"
+#include "pdnformat.h"
 #include <QPainter>
 #include <QImageReader>
 #include <QImageWriter>
@@ -557,6 +558,40 @@ bool Document::loadNative(const QString &filePath) {
     return true;
 }
 
+bool Document::isOpenOnlyFormat(const QString &filePath) {
+    return QFileInfo(filePath).suffix().compare(QLatin1String("pdn"), Qt::CaseInsensitive) == 0;
+}
+
+bool Document::loadPdn(const QString &filePath) {
+    Pdn::ImageData pdn;
+    if (!Pdn::read(filePath, pdn)) return false;
+
+    std::vector<std::shared_ptr<Layer>> layers;
+    layers.reserve(pdn.layers.size());
+    for (Pdn::LayerData &data : pdn.layers) {
+        auto layer = std::make_shared<Layer>(data.image, data.name);
+        layer->setVisible(data.visible);
+        layer->setOpacity(data.opacity);
+        layer->setBlendMode(data.blendMode);
+        layers.push_back(layer);
+    }
+
+    m_width = pdn.width;
+    m_height = pdn.height;
+    m_layers = std::move(layers);
+    m_activeLayer = static_cast<int>(m_layers.size()) - 1;   // Paint.NET opens on the top layer
+    m_selection = Selection(m_width, m_height);
+    m_history.clear();
+    m_filePath = filePath;
+    m_modified = false;
+
+    emit layersChanged();
+    emit activeLayerChanged(m_activeLayer);
+    emit sizeChanged(m_width, m_height);
+    emit documentChanged();
+    return true;
+}
+
 bool Document::save(const QString &filePath, int quality) {
     if (isNativeFormat(filePath))
         return saveNative(filePath);
@@ -594,6 +629,8 @@ bool Document::save(const QString &filePath, int quality) {
 bool Document::load(const QString &filePath) {
     if (isNativeFormat(filePath))
         return loadNative(filePath);
+    if (Pdn::isPdnFile(filePath))
+        return loadPdn(filePath);
 
     QImageReader reader(filePath);
     QImage image = reader.read();

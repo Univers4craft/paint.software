@@ -98,6 +98,10 @@ public:
     bool saveNative(const QString &filePath);
     bool loadNative(const QString &filePath);
     static bool isNativeFormat(const QString &filePath);
+    // Paint.NET's layered .pdn: opened with every layer, but not written back
+    // (Save goes through Save As so the user picks .psw or a flat format).
+    bool loadPdn(const QString &filePath);
+    static bool isOpenOnlyFormat(const QString &filePath);
     QString filePath() const { return m_filePath; }
     bool isModified() const { return m_modified; }
     void setModified(bool modified) { m_modified = modified; }

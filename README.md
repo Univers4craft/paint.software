@@ -30,6 +30,7 @@ maintainer's final approval (see [Contributing](#-contributing--en)).
 ### ✨ Features
 - **Layers** with opacity, blend modes, live thumbnails, and smart merge
 - **Native `.psw` format** that saves and reloads your full layer stack (or export flat to PNG/JPEG/…)
+- **Opens Paint.NET `.pdn` files** with their layers, names, visibility, opacity and blend modes (save them as `.psw` or a flat image)
 - **Text tool** with font, size, **bold / italic / underline**
 - **Tools:** paintbrush, pencil, eraser, paint bucket, gradient, shapes, line, text, clone stamp,
   color picker, recolor, magic wand, lasso & rectangle selection, move, zoom, pan
@@ -164,6 +165,7 @@ fusionnée après **mon approbation finale** en tant que mainteneur (voir [Contr
 ### ✨ Fonctionnalités
 - **Calques** avec opacité, modes de fusion, miniatures en direct et fusion intelligente
 - **Format natif `.psw`** qui enregistre et recharge toute la pile de calques (ou export à plat en PNG/JPEG/…)
+- **Ouvre les fichiers Paint.NET `.pdn`** avec leurs calques, noms, visibilité, opacité et modes de fusion (à enregistrer ensuite en `.psw` ou en image à plat)
 - **Outil texte** avec police, taille, **gras / italique / souligné**
 - **Outils :** pinceau, crayon, gomme, pot de peinture, dégradé, formes, ligne, texte, tampon de clonage,
   pipette, recoloration, baguette magique, lasso & sélection rectangulaire, déplacement, zoom, main

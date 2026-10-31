@@ -1790,8 +1790,9 @@ void MainWindow::newDocument() {
 
 void MainWindow::openDocument() {
     QStringList files = QFileDialog::getOpenFileNames(this, TR("Ouvrir une image"),
-        QString(), "Tous les formats pris en charge (*.psw *.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;"
+        QString(), "Tous les formats pris en charge (*.psw *.pdn *.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;"
                    "paint.software (calques) (*.psw);;"
+                   "Paint.NET (*.pdn);;"
                    "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tiff *.webp);;All Files (*)");
     for (const QString &f : files)
         loadDocumentInto(f);
@@ -1937,7 +1938,8 @@ void MainWindow::updateRecentFilesMenu() {
 }
 
 bool MainWindow::saveDocument() {
-    if (m_document->filePath().isEmpty())
+    // .pdn is opened but not written back: ask where to save instead.
+    if (m_document->filePath().isEmpty() || Document::isOpenOnlyFormat(m_document->filePath()))
         return saveDocumentAs();
     if (!m_document->save(m_document->filePath())) {
         QMessageBox::warning(this, TR("Erreur"), TR("Impossible d'enregistrer le fichier."));
@@ -1950,8 +1952,15 @@ bool MainWindow::saveDocument() {
 
 bool MainWindow::saveDocumentAs() {
     QString selectedFilter;
+    // Coming from a .pdn, suggest the same name as a layered .psw.
+    QString suggested;
+    const QString current = m_document->filePath();
+    if (Document::isOpenOnlyFormat(current)) {
+        const QFileInfo info(current);
+        suggested = info.dir().filePath(info.completeBaseName() + ".psw");
+    }
     QString filePath = QFileDialog::getSaveFileName(this, TR("Enregistrer l'image"),
-        QString(), "paint.software - garde les calques (*.psw);;PNG (*.png);;JPEG (*.jpg *.jpeg);;"
+        suggested, "paint.software - garde les calques (*.psw);;PNG (*.png);;JPEG (*.jpg *.jpeg);;"
                    "BMP (*.bmp);;TIFF (*.tiff);;WebP (*.webp);;All Files (*)",
         &selectedFilter);
     if (filePath.isEmpty()) return false;
@@ -3721,7 +3730,8 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
             QString filePath = url.toLocalFile();
             QString suffix = QFileInfo(filePath).suffix().toLower();
             if (suffix == "png" || suffix == "jpg" || suffix == "jpeg" || 
-                suffix == "bmp" || suffix == "gif" || suffix == "tiff" || suffix == "webp") {
+                suffix == "bmp" || suffix == "gif" || suffix == "tiff" || suffix == "webp" ||
+                suffix == "pdn") {
                 event->acceptProposedAction();
                 return;
             }
@@ -3736,6 +3746,17 @@ void MainWindow::dragMoveEvent(QDragMoveEvent *event)
 
 void MainWindow::dropEvent(QDropEvent *event)
 {
+    // A dropped .pdn keeps its layers, so open it as its own image rather
+    // than flattening it into a layer of the current one.
+    if (event->mimeData()->hasUrls() && !event->mimeData()->urls().isEmpty()) {
+        const QString filePath = event->mimeData()->urls().first().toLocalFile();
+        if (QFileInfo(filePath).suffix().compare("pdn", Qt::CaseInsensitive) == 0) {
+            openFile(filePath);
+            event->acceptProposedAction();
+            return;
+        }
+    }
+
     if (!m_document) {
         QMessageBox::warning(this, TR("Erreur"), TR("Veuillez créer un document avant d'ajouter un calque."));
         return;

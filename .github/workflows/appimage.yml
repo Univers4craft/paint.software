@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build libgl1-mesa-dev \
+            build-essential cmake ninja-build libgl1-mesa-dev zlib1g-dev \
             libfuse2 file wget desktop-file-utils python3-pip \
             libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
             libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-render0 \

@@ -88,6 +88,21 @@ QWidget *SettingsDialog::buildUserInterfacePage() {
     });
     form->addRow(TR("Langue :"), m_languageCombo);
 
+    // Text size (issue #32): menus and panels were unreadable on high-resolution
+    // screens. Automatic follows the desktop font size; the rest force a factor.
+    m_fontScaleCombo = new QComboBox;
+    m_fontScaleCombo->addItem(TR("Automatique (système)"), 0);
+    for (int p : {100, 125, 150, 175, 200})
+        m_fontScaleCombo->addItem(QString::number(p) + " %", p);
+    const int curScale = m_fontScaleCombo->findData(Theme::fontScalePercent());
+    m_fontScaleCombo->setCurrentIndex(curScale >= 0 ? curScale : 0);
+    connect(m_fontScaleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int i) {
+        Theme::setFontScalePercent(m_fontScaleCombo->itemData(i).toInt());
+        Theme::saveToSettings();
+        emit colorSchemeChanged();   // restyles the application with the new size
+    });
+    form->addRow(TR("Taille du texte :"), m_fontScaleCombo);
+
     layout->addLayout(form);
 
     QSettings settings("PaintDali", "PaintDali");
@@ -113,7 +128,7 @@ QWidget *SettingsDialog::buildUserInterfacePage() {
     });
     layout->addWidget(hidePanels);
 
-    auto *note = new QLabel(TR("Le changement de langue est appliqué immédiatement."));
+    auto *note = new QLabel(TR("Le changement de langue est appliqué immédiatement. La taille du texte s'applique entièrement au prochain démarrage."));
     note->setStyleSheet("color: #4a90d9;");
     note->setWordWrap(true);
     layout->addWidget(note);

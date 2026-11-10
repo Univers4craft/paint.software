@@ -1767,6 +1767,23 @@ int main(int argc, char **argv) {
         CHECK(ds.contains("QMenuBar") && ds != ls, "Dark stylesheet differs from light");
         CHECK(Theme::canvasBackdrop() != QString("#969696"), "Dark backdrop differs from light");
         Theme::setScheme(Theme::Scheme::Light);
+
+        // Text size (issue #32): pixel font sizes follow the text-size setting.
+        CHECK(Theme::scaleFontSizes("a { font-size: 11px; } b { font-size:12px; }", 2.0)
+                  == QString("a { font-size: 22px; } b { font-size: 24px; }"),
+              "Font sizes double at 200 %");
+        CHECK(Theme::scaleFontSizes("a { font-size: 11px; width: 14px; }", 1.5)
+                  == QString("a { font-size: 17px; width: 14px; }"),
+              "Only font sizes are scaled, not other lengths");
+        CHECK(Theme::scaleFontSizes("a { font-size: 11px; }", 1.0) == QString("a { font-size: 11px; }"),
+              "100 % leaves the stylesheet unchanged");
+        const int savedScale = Theme::fontScalePercent();
+        Theme::setFontScalePercent(150);
+        CHECK(Theme::fontScale() == 1.5, "Fixed text size is honoured");
+        CHECK(Theme::styleSheet().contains("font-size: 17px"), "Global stylesheet follows the text size");
+        Theme::setFontScalePercent(0);
+        CHECK(Theme::fontScale() >= 1.0, "Automatic text size never shrinks below the design size");
+        Theme::setFontScalePercent(savedScale);
     }
 
     // ---------- DOCUMENT RESIZE / CROP ----------
@@ -3866,6 +3883,67 @@ int main(int argc, char **argv) {
               && SaveConfigDialog::supportsQuality("webp")
               && !SaveConfigDialog::supportsQuality("png"),
               "quality dialog is offered for JPEG/WebP, not PNG");
+    }
+
+    SECTION("Scrolling a zoomed-in view: scrollbars, arrow keys, Shift+wheel (issue #34)");
+    {
+        Document doc(400, 300);
+        CanvasWidget canvas;
+        canvas.resize(500, 400);
+        canvas.setDocument(&doc);
+        canvas.setZoom(1.0);
+        canvas.centerView();
+
+        // The image fits: nothing to scroll, the scrollbars stay hidden.
+        auto h = canvas.scrollAxis(Qt::Horizontal);
+        auto v = canvas.scrollAxis(Qt::Vertical);
+        CHECK(h.min == h.max && v.min == v.max, "no scroll range while the image fits");
+
+        // Zoomed in, the range covers the whole image plus a margin.
+        canvas.setZoom(4.0);
+        canvas.centerView();
+        h = canvas.scrollAxis(Qt::Horizontal);
+        const int viewW = 500 - canvas.rulerSize();
+        CHECK(h.min == -40 && h.max == 400 * 4 + 40 - viewW, "zoomed range spans image + margin");
+        CHECK(h.value > h.min && h.value < h.max, "centred view sits inside the range");
+        CHECK(h.page == viewW, "page step is one viewport");
+
+        // Dragging the scrollbar moves the view.
+        canvas.setScrollValue(Qt::Horizontal, h.min);
+        CHECK(canvas.scrollAxis(Qt::Horizontal).value == h.min, "scrollbar value moves the view");
+        CHECK(canvas.pan().x() == 40, "left end shows the image's left edge plus the margin");
+
+        // Arrow keys scroll when the tool does not use them.
+        const QPointF before = canvas.pan();
+        QKeyEvent right(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
+        QApplication::sendEvent(&canvas, &right);
+        CHECK(canvas.pan().x() < before.x() && canvas.pan().y() == before.y(),
+              "Right arrow scrolls the view to the right");
+        const QPointF afterRight = canvas.pan();
+        QKeyEvent down(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
+        QApplication::sendEvent(&canvas, &down);
+        CHECK(canvas.pan().y() < afterRight.y(), "Down arrow scrolls the view down");
+
+        // Shift+wheel scrolls sideways instead of zooming.
+        const double zoomBefore = canvas.zoom();
+        const QPointF beforeWheel = canvas.pan();
+        QWheelEvent shiftWheel(QPointF(100, 100), QPointF(100, 100), QPoint(), QPoint(0, -120),
+                               Qt::NoButton, Qt::ShiftModifier, Qt::NoScrollPhase, false);
+        QApplication::sendEvent(&canvas, &shiftWheel);
+        CHECK(canvas.zoom() == zoomBefore, "Shift+wheel does not zoom");
+        CHECK(canvas.pan().x() < beforeWheel.x(), "Shift+wheel down scrolls right");
+
+        // A horizontal swipe pans instead of zooming out.
+        QWheelEvent swipe(QPointF(100, 100), QPointF(100, 100), QPoint(), QPoint(120, 0),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        QApplication::sendEvent(&canvas, &swipe);
+        CHECK(canvas.zoom() == zoomBefore, "a horizontal swipe does not zoom out");
+
+        // The plain wheel still zooms.
+        QWheelEvent wheel(QPointF(100, 100), QPointF(100, 100), QPoint(), QPoint(0, 120),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        QApplication::sendEvent(&canvas, &wheel);
+        CHECK(canvas.zoom() > zoomBefore, "the plain wheel still zooms");
     }
 
     // ---------- RESULT ----------

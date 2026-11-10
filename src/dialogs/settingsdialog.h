@@ -33,5 +33,6 @@ private:
 
     QComboBox *m_schemeCombo;
     QComboBox *m_languageCombo;
+    QComboBox *m_fontScaleCombo;
     QSlider *m_checkerSlider;
 };

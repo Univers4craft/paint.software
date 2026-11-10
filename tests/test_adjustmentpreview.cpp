@@ -26,6 +26,7 @@
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QThread>
+#include <QTimer>
 #include <QThreadPool>
 #include <iostream>
 #include <cstdlib>
@@ -878,6 +879,51 @@ int main(int argc, char **argv) {
         check(document->layerAt(0)->image()==before0 && document->layerAt(1)->image()==before1,"Temperature/Tint grouped undo");
         document->history().redo();
         check(document->layerAt(0)->image()==after0 && document->layerAt(1)->image()==after1,"Temperature/Tint grouped redo");
+    }
+    // Layers > Rotate / Zoom previews live on the canvas (issue #33), transforms
+    // the whole layer even with a selection, and commits one undo entry.
+    {
+        MainWindow window;
+        auto *view = window.findChild<CanvasWidget *>();
+        auto *document = view->document();
+        document->resize(8,8);
+        QImage stripe(8,8,QImage::Format_ARGB32_Premultiplied);
+        stripe.fill(Qt::white);
+        for (int y = 0; y < 8; ++y) stripe.setPixel(0,y,qRgb(0,0,0));
+        document->layerAt(0)->setImage(stripe);
+        QImage mask(8,8,QImage::Format_Grayscale8); mask.fill(0);
+        mask.scanLine(4)[4] = 255;
+        document->selection().setMaskImage(mask);
+        view->resize(200,200); view->zoomToFit(); QApplication::processEvents();
+        const QImage before = document->layerAt(0)->image();
+        auto run = [&](bool accept) {
+            QTimer::singleShot(0,&window,[&window,view,document,accept,before]() {
+                QDialog *dialog = nullptr;
+                for (auto *d : window.findChildren<QDialog *>()) if (d->isVisible()) dialog = d;
+                check(dialog,"Rotate / Zoom dialog opens");
+                auto sliders = dialog->findChildren<QSlider *>();
+                check(sliders.size()==2,"angle and scale sliders");
+                const QImage baseline = view->grab().toImage();
+                sliders[0]->setValue(90);
+                check(until([&] { return view->grab().toImage() != baseline; }),
+                      "Rotate / Zoom updates the canvas while the dialog is open");
+                check(document->layerAt(0)->image()==before,"Rotate / Zoom preview leaves the layer untouched");
+                sliders[1]->setValue(50);
+                if (accept) dialog->accept(); else dialog->reject();
+            });
+            check(QMetaObject::invokeMethod(&window,"showRotateZoomLayerDialog",Qt::DirectConnection),
+                  "invoke Rotate / Zoom");
+        };
+        const auto history0 = document->history().currentIndex();
+        run(false);
+        check(document->layerAt(0)->image()==before && document->history().currentIndex()==history0,
+              "Rotate / Zoom Cancel restores state");
+        run(true);
+        check(document->layerAt(0)->image()==rotateZoomImage(before,90,0.5).convertToFormat(before.format()),
+              "Rotate / Zoom commits the whole layer with the final values, ignoring the selection");
+        check(document->history().currentIndex()==history0+1,"Rotate / Zoom adds one undo entry");
+        document->history().undo();
+        check(document->layerAt(0)->image()==before,"Rotate / Zoom undo");
     }
     std::cout << "Adjustment preview regressions passed\n";
 }

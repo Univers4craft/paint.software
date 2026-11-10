@@ -36,6 +36,17 @@ public:
     // Any explicit pan is a user gesture: stop auto-centring from then on.
     void setPan(const QPointF &pan) { m_pan = pan; m_autoCenter = false; update(); }
 
+    // Scrolling (issue #34). Along each axis the scroll offset is -pan, in view
+    // pixels. The range covers the image plus a margin, and always includes the
+    // current offset so a view panned past the edge can be scrolled back. When
+    // min == max the image fits and no scrolling is needed.
+    struct ScrollAxis { int min = 0; int max = 0; int value = 0; int page = 1; };
+    ScrollAxis scrollAxis(Qt::Orientation o) const;
+    void setScrollValue(Qt::Orientation o, int value);
+    // Moves the view by `delta` view pixels (positive = towards the bottom-right
+    // of the image).
+    void scrollBy(const QPointF &delta);
+
     // Coordinate conversion
     QPointF widgetToCanvas(const QPointF &widgetPos) const;
     QPointF canvasToWidget(const QPointF &canvasPos) const;
@@ -71,6 +82,7 @@ signals:
     void fillSelectionRequested();
     void selectionContextMenuRequested(const QPoint &globalPos);
     void tabletDetected();   // emitted the first time a stylus is used
+    void viewChanged();      // pan, zoom, viewport or image size changed
 
 protected:
     bool event(QEvent *event) override;   // claim ShortcutOverride while a tool types
@@ -98,6 +110,11 @@ private:
     // centred whatever the final window size is (maximised or restored). Any
     // user pan turns it off; resetToDefaultView turns it back on.
     bool m_autoCenter = true;
+
+    // Last view geometry reported through viewChanged().
+    QPointF m_lastViewPan{-1e9, -1e9};
+    double m_lastViewZoom = -1.0;
+    QSize m_lastViewSize, m_lastViewDocSize;
 
     bool m_isPanning = false;
     bool m_spaceDown = false;   // Space held: pan-drag with any tool (Paint.NET)

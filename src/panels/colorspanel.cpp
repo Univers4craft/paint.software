@@ -250,7 +250,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
     sliderGrid->setSpacing(1);
     // RVB header
     auto *rvbHeader = new QLabel(TR("RVB"));
-    rvbHeader->setStyleSheet("font-weight: bold; font-size: 10px; color: #555;");
+    rvbHeader->setStyleSheet(Theme::css(QStringLiteral("font-weight: bold; font-size: 10px; color: #555;")));
     sliderGrid->addWidget(rvbHeader, 0, 0, 1, 3);
     auto makeSlider = [&](const QString &label, int row, QSlider *&slider, QSpinBox *&spin) {
         auto *lbl = new QLabel(label);
@@ -286,7 +286,7 @@ ColorsPanel::ColorsPanel(QWidget *parent) : QWidget(parent) {
 
     // HSV header label
     auto *hsvHeader = new QLabel(TR("TSV"));
-    hsvHeader->setStyleSheet("font-weight: bold; font-size: 10px; color: #555;");
+    hsvHeader->setStyleSheet(Theme::css(QStringLiteral("font-weight: bold; font-size: 10px; color: #555;")));
     hsvGrid->addWidget(hsvHeader, 0, 0, 1, 3);
 
     auto makeHsvSlider = [&](const QString &label, int row, int maxVal, QSlider *&slider, QSpinBox *&spin) {

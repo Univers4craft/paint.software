@@ -175,6 +175,36 @@ void CanvasWidget::resetToDefaultView() {
     centerView();
 }
 
+CanvasWidget::ScrollAxis CanvasWidget::scrollAxis(Qt::Orientation o) const {
+    ScrollAxis a;
+    if (!m_document) return a;
+    const int rs = m_showRulers ? 20 : 0;
+    const bool h = (o == Qt::Horizontal);
+    const double view = std::max(1, (h ? width() : height()) - rs);
+    const double img = (h ? m_document->width() : m_document->height()) * m_zoom;
+    const double margin = 40.0;
+    const double cur = -(h ? m_pan.x() : m_pan.y());
+    a.value = int(std::lround(cur));
+    a.min = std::min(int(std::lround(-margin)), a.value);
+    a.max = std::max(int(std::lround(img + margin - view)), a.value);
+    a.page = std::max(1, int(view));
+    return a;
+}
+
+void CanvasWidget::setScrollValue(Qt::Orientation o, int value) {
+    if (o == Qt::Horizontal) m_pan.setX(-value);
+    else                     m_pan.setY(-value);
+    m_autoCenter = false;   // the user placed the view; leave it alone
+    update();
+}
+
+void CanvasWidget::scrollBy(const QPointF &delta) {
+    if (!m_document) return;
+    m_pan -= delta;
+    m_autoCenter = false;
+    update();
+}
+
 QPointF CanvasWidget::widgetToCanvas(const QPointF &widgetPos) const {
     int rs = m_showRulers ? 20 : 0;
     return (widgetPos - QPointF(rs, rs) - m_pan) / m_zoom;
@@ -208,6 +238,18 @@ void CanvasWidget::paintEvent(QPaintEvent *) {
     painter.fillRect(rect(), m_backdrop);
 
     if (!m_document) return;
+
+    // Every pan/zoom/resize path ends in a repaint, so this is the one place that
+    // sees them all: tell the scrollbars when the view geometry moved. Queued so
+    // they never update from inside this paint.
+    if (m_pan != m_lastViewPan || m_zoom != m_lastViewZoom || size() != m_lastViewSize
+        || m_document->size() != m_lastViewDocSize) {
+        m_lastViewPan = m_pan;
+        m_lastViewZoom = m_zoom;
+        m_lastViewSize = size();
+        m_lastViewDocSize = m_document->size();
+        QMetaObject::invokeMethod(this, &CanvasWidget::viewChanged, Qt::QueuedConnection);
+    }
 
     // Ruler offset
     int rs = m_showRulers ? 20 : 0;
@@ -544,6 +586,23 @@ void CanvasWidget::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void CanvasWidget::wheelEvent(QWheelEvent *event) {
+    // Scrolling the view (issue #34): Shift+wheel scrolls sideways, and a
+    // horizontal wheel or touchpad swipe (no vertical part) pans sideways
+    // instead of zooming out. The plain vertical wheel keeps zooming.
+    const QPoint ad = event->angleDelta();
+    const bool shift = event->modifiers() & Qt::ShiftModifier;
+    if (shift || (ad.y() == 0 && ad.x() != 0)) {
+        if (!m_document) return;
+        const QPoint pd = event->pixelDelta();
+        // Some platforms report Shift+wheel on the x axis already.
+        double d = !pd.isNull() ? (pd.y() != 0 ? pd.y() : pd.x())
+                                : (ad.y() != 0 ? ad.y() : ad.x()) / 120.0 * 60.0;
+        scrollBy(QPointF(-d, 0));
+        event->accept();
+        return;
+    }
+    if (ad.y() == 0) return;
+
     QPointF oldCanvasPos = widgetToCanvas(event->position());
     double factor = event->angleDelta().y() > 0 ? 1.15 : 1.0 / 1.15;
     setZoom(m_zoom * factor);
@@ -562,6 +621,25 @@ void CanvasWidget::keyPressEvent(QKeyEvent *event) {
             m_spaceDown = true;
             if (!m_isPanning) setCursor(Qt::OpenHandCursor);
         }
+        event->accept();
+        return;
+    }
+    // Arrow keys scroll the view (issue #34) unless the tool uses them (nudging
+    // a shape being edited, typing text). Ctrl scrolls a whole screen.
+    if (m_document && (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right
+                       || event->key() == Qt::Key_Up || event->key() == Qt::Key_Down)
+        && !(m_currentTool && (m_currentTool->wantsKeyInput()
+                               || m_currentTool->wantsCommitKey(event->key())))) {
+        const int rs = m_showRulers ? 20 : 0;
+        const bool page = event->modifiers() & Qt::ControlModifier;
+        const double stepX = page ? (width() - rs) * 0.9 : std::max(20.0, (width() - rs) / 10.0);
+        const double stepY = page ? (height() - rs) * 0.9 : std::max(20.0, (height() - rs) / 10.0);
+        QPointF d;
+        if (event->key() == Qt::Key_Left)  d.setX(-stepX);
+        if (event->key() == Qt::Key_Right) d.setX(stepX);
+        if (event->key() == Qt::Key_Up)    d.setY(-stepY);
+        if (event->key() == Qt::Key_Down)  d.setY(stepY);
+        scrollBy(d);
         event->accept();
         return;
     }

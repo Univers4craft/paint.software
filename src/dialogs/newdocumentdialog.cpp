@@ -1,4 +1,5 @@
 #include "newdocumentdialog.h"
+#include "../theme.h"
 #include "../i18n.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -77,7 +78,7 @@ NewDocumentDialog::NewDocumentDialog(QWidget *parent) : QDialog(parent) {
 
     // Infos taille
     m_sizeInfoLabel = new QLabel;
-    m_sizeInfoLabel->setStyleSheet("color: #555; font-size: 11px;");
+    m_sizeInfoLabel->setStyleSheet(Theme::css(QStringLiteral("color: #555; font-size: 11px;")));
     m_sizeInfoLabel->setText(QString("%1 \u00d7 %2 pixels").arg(800).arg(600));
     layout->addWidget(m_sizeInfoLabel);
 

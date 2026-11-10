@@ -5,10 +5,15 @@
 #include <QPalette>
 #include <QProcess>
 #include <QStyleHints>
+#include <QRegularExpression>
+#include <QFont>
+#include <cmath>
+#include <algorithm>
 
 namespace {
 
 Theme::Scheme g_scheme = Theme::Scheme::Default;
+int g_fontScalePercent = 0;   // 0 = automatic
 
 // Ask the desktop directly. Returns 1 = dark, 0 = light, -1 = no answer.
 // Needed because the Qt palette is not reliable everywhere: inside an AppImage
@@ -268,7 +273,47 @@ bool isDark() {
 }
 
 QString styleSheet() {
-    return QString::fromUtf8(isDark() ? kDark : kLight);
+    return css(QString::fromUtf8(isDark() ? kDark : kLight));
+}
+
+int fontScalePercent() { return g_fontScalePercent; }
+
+void setFontScalePercent(int percent) {
+    g_fontScalePercent = percent <= 0 ? 0 : std::clamp(percent, 50, 300);
+}
+
+double fontScale() {
+    if (g_fontScalePercent > 0) return g_fontScalePercent / 100.0;
+    // Automatic: the stylesheets were designed against a 10 pt desktop font.
+    // When the user has asked their desktop for bigger text, follow it; never
+    // shrink below the designed size.
+    const QFont f = QApplication::font();
+    double pt = f.pointSizeF();
+    if (pt <= 0 && f.pixelSize() > 0) pt = f.pixelSize() * 0.75;
+    if (pt <= 0) return 1.0;
+    return std::clamp(pt / 10.0, 1.0, 3.0);
+}
+
+QString scaleFontSizes(const QString &styleSheet, double scale) {
+    if (std::abs(scale - 1.0) < 1e-6) return styleSheet;
+    static const QRegularExpression re(QStringLiteral(R"(font-size:\s*(\d+(?:\.\d+)?)px)"));
+    QString out;
+    out.reserve(styleSheet.size());
+    qsizetype last = 0;
+    auto it = re.globalMatch(styleSheet);
+    while (it.hasNext()) {
+        const auto m = it.next();
+        out += styleSheet.mid(last, m.capturedStart() - last);
+        const int px = int(std::lround(m.captured(1).toDouble() * scale));
+        out += QStringLiteral("font-size: %1px").arg(std::max(1, px));
+        last = m.capturedEnd();
+    }
+    out += styleSheet.mid(last);
+    return out;
+}
+
+QString css(const QString &styleSheet) {
+    return scaleFontSizes(styleSheet, fontScale());
 }
 
 QString canvasBackdrop() {
@@ -283,6 +328,7 @@ void loadFromSettings() {
     if (v == "light") g_scheme = Scheme::Light;
     else if (v == "dark") g_scheme = Scheme::Dark;
     else g_scheme = Scheme::Default;
+    setFontScalePercent(s.value("ui/fontScale", 0).toInt());
 }
 
 void saveToSettings() {
@@ -290,6 +336,7 @@ void saveToSettings() {
     const char *v = (g_scheme == Scheme::Light) ? "light"
                   : (g_scheme == Scheme::Dark)  ? "dark" : "default";
     s.setValue("ui/colorScheme", v);
+    s.setValue("ui/fontScale", g_fontScalePercent);
 }
 
 } // namespace Theme

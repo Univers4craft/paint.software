@@ -1,4 +1,5 @@
 #include "pastedialog.h"
+#include "../theme.h"
 #include "i18n.h"
 #include <QPushButton>
 #include <QImage>
@@ -31,9 +32,9 @@ public:
         auto *texts = new QVBoxLayout;
         texts->setSpacing(3);
         auto *heading = new QLabel(title, this);
-        heading->setStyleSheet("font-size: 14px; font-weight: bold;");
+        heading->setStyleSheet(Theme::css(QStringLiteral("font-size: 14px; font-weight: bold;")));
         auto *explanation = new QLabel(description, this);
-        explanation->setStyleSheet("font-size: 11px;");
+        explanation->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px;")));
         explanation->setWordWrap(true);
         for (auto *label : {heading, explanation}) {
             label->setAttribute(Qt::WA_TransparentForMouseEvents);

@@ -1,4 +1,5 @@
 #include "historypanel.h"
+#include "../theme.h"
 #include "../i18n.h"
 #include "core/document.h"
 #include <QVBoxLayout>
@@ -43,7 +44,7 @@ HistoryPanel::HistoryPanel(QWidget *parent) : QWidget(parent) {
     layout->addLayout(bottomBar);
 
     m_statusLabel = new QLabel;
-    m_statusLabel->setStyleSheet("font-size: 9px; color: #888;");
+    m_statusLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 9px; color: #888;")));
     m_statusLabel->setVisible(false);
 
     connect(undoBtn, &QToolButton::clicked, this, [this]() {

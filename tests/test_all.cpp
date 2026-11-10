@@ -1767,6 +1767,23 @@ int main(int argc, char **argv) {
         CHECK(ds.contains("QMenuBar") && ds != ls, "Dark stylesheet differs from light");
         CHECK(Theme::canvasBackdrop() != QString("#969696"), "Dark backdrop differs from light");
         Theme::setScheme(Theme::Scheme::Light);
+
+        // Text size (issue #32): pixel font sizes follow the text-size setting.
+        CHECK(Theme::scaleFontSizes("a { font-size: 11px; } b { font-size:12px; }", 2.0)
+                  == QString("a { font-size: 22px; } b { font-size: 24px; }"),
+              "Font sizes double at 200 %");
+        CHECK(Theme::scaleFontSizes("a { font-size: 11px; width: 14px; }", 1.5)
+                  == QString("a { font-size: 17px; width: 14px; }"),
+              "Only font sizes are scaled, not other lengths");
+        CHECK(Theme::scaleFontSizes("a { font-size: 11px; }", 1.0) == QString("a { font-size: 11px; }"),
+              "100 % leaves the stylesheet unchanged");
+        const int savedScale = Theme::fontScalePercent();
+        Theme::setFontScalePercent(150);
+        CHECK(Theme::fontScale() == 1.5, "Fixed text size is honoured");
+        CHECK(Theme::styleSheet().contains("font-size: 17px"), "Global stylesheet follows the text size");
+        Theme::setFontScalePercent(0);
+        CHECK(Theme::fontScale() >= 1.0, "Automatic text size never shrinks below the design size");
+        Theme::setFontScalePercent(savedScale);
     }
 
     // ---------- DOCUMENT RESIZE / CROP ----------

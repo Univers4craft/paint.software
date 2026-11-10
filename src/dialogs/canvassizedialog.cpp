@@ -1,4 +1,5 @@
 #include "canvassizedialog.h"
+#include "../theme.h"
 #include "../i18n.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -66,7 +67,7 @@ CanvasSizeDialog::CanvasSizeDialog(int currentWidth, int currentHeight, QWidget 
     // Info label
     auto *infoLabel = new QLabel(TR("Le nouvel espace sera rempli avec la couleur secondaire."));
     infoLabel->setWordWrap(true);
-    infoLabel->setStyleSheet("color: #555; font-size: 11px; font-style: italic;");
+    infoLabel->setStyleSheet(Theme::css(QStringLiteral("color: #555; font-size: 11px; font-style: italic;")));
     layout->addWidget(infoLabel);
 
     // Buttons

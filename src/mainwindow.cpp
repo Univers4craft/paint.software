@@ -1558,12 +1558,12 @@ void MainWindow::createDockPanels() {
 void MainWindow::createStatusBar() {
     // Active tool name on the far left.
     m_toolLabel = new QLabel("Pinceau");
-    m_toolLabel->setStyleSheet("font-size: 11px; font-weight: bold; padding-left: 4px; padding-right: 6px;");
+    m_toolLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px; font-weight: bold; padding-left: 4px; padding-right: 6px;")));
     statusBar()->addWidget(m_toolLabel);
 
     // Help text on the left (like Paint.NET)
     m_helpTextLabel = new QLabel(TR("Clic gauche pour dessiner avec la couleur primaire, clic droit avec la couleur secondaire."));
-    m_helpTextLabel->setStyleSheet("font-size: 11px; padding-left: 4px;");
+    m_helpTextLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px; padding-left: 4px;")));
 
     // Size icon (drawn grid icon) + dimensions
     auto *sizeIcon = new QLabel;
@@ -1580,7 +1580,7 @@ void MainWindow::createStatusBar() {
     }
     sizeIcon->setFixedWidth(14);
     m_sizeLabel = new QLabel("800 × 600");
-    m_sizeLabel->setStyleSheet("font-size: 11px;");
+    m_sizeLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px;")));
 
     // Cursor position icon (drawn crosshair) + coords
     auto *cursorIcon = new QLabel;
@@ -1598,15 +1598,15 @@ void MainWindow::createStatusBar() {
     }
     cursorIcon->setFixedWidth(14);
     m_positionLabel = new QLabel("0, 0");
-    m_positionLabel->setStyleSheet("font-size: 11px;");
+    m_positionLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px;")));
 
     // "px" unit label
     auto *pxLabel = new QLabel("px");
-    pxLabel->setStyleSheet("font-size: 11px; color: #666;");
+    pxLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px; color: #666;")));
 
     // Zoom percentage
     m_zoomLabel = new QLabel("100%");
-    m_zoomLabel->setStyleSheet("font-size: 11px;");
+    m_zoomLabel->setStyleSheet(Theme::css(QStringLiteral("font-size: 11px;")));
     m_zoomLabel->setFixedWidth(42);
 
     // Paint.NET-like zoom controls on the right: [-] [slider] [+]

@@ -86,6 +86,7 @@ private slots:
     void importLayerFromFile();     // add an image file as a new layer
     void flipActiveLayerHorizontal();
     void flipActiveLayerVertical();
+    QWidget *createCanvasArea();         // canvas + scrollbars (issue #34)
     void showRotateZoomLayerDialog();   // rotate + scale the active layer
     void invertSelection();
 

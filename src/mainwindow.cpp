@@ -103,6 +103,8 @@
 #include <QClipboard>
 #include <QInputDialog>
 #include <QScrollArea>
+#include <QScrollBar>
+#include <QGridLayout>
 #include <QSlider>
 #include <QLabel>
 #include <QPainter>
@@ -167,7 +169,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // Canvas
     m_canvas = new CanvasWidget(this);
     m_canvas->setDocument(m_document);
-    setCentralWidget(m_canvas);
+    setCentralWidget(createCanvasArea());
 
     createTools();
     createToolsPanel();
@@ -2203,6 +2205,47 @@ void MainWindow::flipActiveLayerVertical() {
     layer->setImage(layer->image().mirrored(false, true));
     m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Retourner le calque");
     m_canvas->updateCanvas();
+}
+
+QWidget *MainWindow::createCanvasArea() {
+    // The canvas with paint.net-style scrollbars on its right and bottom edges
+    // (issue #34): a zoomed-in image could only be moved with the middle button
+    // or Space+drag, which nobody finds on their own.
+    auto *area = new QWidget(this);
+    auto *grid = new QGridLayout(area);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setSpacing(0);
+    auto *hbar = new QScrollBar(Qt::Horizontal, area);
+    auto *vbar = new QScrollBar(Qt::Vertical, area);
+    m_canvas->setParent(area);
+    grid->addWidget(m_canvas, 0, 0);
+    grid->addWidget(vbar, 0, 1);
+    grid->addWidget(hbar, 1, 0);
+    hbar->hide();
+    vbar->hide();
+
+    auto sync = [this, hbar, vbar]() {
+        for (auto [bar, o] : {std::pair{hbar, Qt::Horizontal}, std::pair{vbar, Qt::Vertical}}) {
+            const CanvasWidget::ScrollAxis a = m_canvas->scrollAxis(o);
+            const QSignalBlocker block(bar);
+            bar->setRange(a.min, a.max);
+            bar->setPageStep(a.page);
+            bar->setSingleStep(std::max(20, a.page / 10));
+            bar->setValue(a.value);
+            bar->setVisible(a.max > a.min);
+        }
+    };
+    connect(m_canvas, &CanvasWidget::viewChanged, area, sync);
+    connect(hbar, &QScrollBar::valueChanged, m_canvas,
+            [this](int v) { m_canvas->setScrollValue(Qt::Horizontal, v); });
+    connect(vbar, &QScrollBar::valueChanged, m_canvas,
+            [this](int v) { m_canvas->setScrollValue(Qt::Vertical, v); });
+    // Never steal keyboard focus from the canvas (arrow keys, tool shortcuts).
+    hbar->setFocusPolicy(Qt::NoFocus);
+    vbar->setFocusPolicy(Qt::NoFocus);
+    // Start with the canvas focused so the arrow keys scroll right away.
+    QTimer::singleShot(0, m_canvas, [this]() { m_canvas->setFocus(); });
+    return area;
 }
 
 void MainWindow::showRotateZoomLayerDialog() {

@@ -2285,31 +2285,30 @@ void MainWindow::showRotateZoomLayerDialog() {
     connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
     form->addWidget(buttons);
 
-    if (dlg.exec() != QDialog::Accepted) return;
+    // Live preview on the canvas while the sliders move (issue #33), through the
+    // same worker-thread preview the adjustment dialogs use. The whole layer is
+    // transformed, selection or not, as before.
+    const int layerIndex = m_document->activeLayerIndex();
+    AdjustmentPreview preview(m_document, m_canvas, {layerIndex}, nullptr, false);
+    auto operation = [angleSlider, scaleSlider]() -> ImageOperation {
+        const double angle = angleSlider->value();
+        const double scale = scaleSlider->value() / 100.0;
+        return [angle, scale](const QImage &image) { return rotateZoomImage(image, angle, scale); };
+    };
+    auto requestPreview = [&]() { preview.request(operation()); };
+    connect(angleSlider, &QSlider::valueChanged, &preview, requestPreview);
+    connect(scaleSlider, &QSlider::valueChanged, &preview, requestPreview);
+    connect(&dlg, &QDialog::rejected, &preview, &AdjustmentPreview::cancel);
 
-    const double angle = angleSlider->value();
-    const double scale = scaleSlider->value() / 100.0;
-    if (angle == 0.0 && scale == 1.0) return;   // nothing to do
+    if (dlg.exec() != QDialog::Accepted) { preview.cancel(); return; }
 
-    const QImage before = layer->image().copy();
-    const QSize sz = before.size();
-
-    // Rotate + scale about the layer centre, keeping the canvas dimensions so the
-    // result stays aligned with the rest of the document (one undo entry).
-    QImage result(sz, QImage::Format_ARGB32_Premultiplied);
-    result.fill(Qt::transparent);
-    {
-        QPainter p(&result);
-        p.setRenderHint(QPainter::Antialiasing, true);
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        p.translate(sz.width() / 2.0, sz.height() / 2.0);
-        p.rotate(angle);
-        p.scale(scale, scale);
-        p.translate(-sz.width() / 2.0, -sz.height() / 2.0);
-        p.drawImage(0, 0, before);
+    if (angleSlider->value() == 0 && scaleSlider->value() == 100) {   // nothing to do
+        preview.cancel();
+        return;
     }
-    layer->setImage(result);
-    m_document->pushImageEdit(m_document->activeLayerIndex(), before, "Rotation / Zoom du calque");
+    // One undo entry; the canvas keeps the document size so the result stays
+    // aligned with the other layers.
+    preview.commit(operation(), "Rotation / Zoom du calque");
     m_canvas->updateCanvas();
 }
 

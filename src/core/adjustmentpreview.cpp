@@ -4,11 +4,12 @@
 #include <QFutureWatcher>
 
 AdjustmentPreview::AdjustmentPreview(Document *doc, CanvasWidget *canvas,
-                                     const std::vector<int> &targets, QObject *parent)
+                                     const std::vector<int> &targets, QObject *parent,
+                                     bool useSelection)
     : QObject(parent), m_document(doc), m_canvas(canvas) {
     if (canvas) connect(canvas, &QObject::destroyed, this, &AdjustmentPreview::cancel);
     m_snapshot.size = doc->size();
-    m_snapshot.selection = doc->selection();
+    if (useSelection) m_snapshot.selection = doc->selection();
     m_snapshot.targets = targets;
     for (int i = 0; i < doc->layerCount(); ++i) m_snapshot.layers.push_back(*doc->layerAt(i));
     m_timer.setSingleShot(true);

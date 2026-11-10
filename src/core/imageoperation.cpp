@@ -1,3 +1,4 @@
+#include <QPainter>
 #include "imageoperation.h"
 QImage adjustedImage(const QImage &source, const QPoint &offset,
                      const Selection &selection, const ImageOperation &operation) {
@@ -29,4 +30,21 @@ QImage adjustedImage(const QImage &source, const QPoint &offset,
         }
     }
     return result.convertToFormat(source.format());
+}
+
+QImage rotateZoomImage(const QImage &source, double angleDegrees, double scale) {
+    if (angleDegrees == 0.0 && scale == 1.0) return source;
+    const QSize sz = source.size();
+    QImage result(sz, QImage::Format_ARGB32_Premultiplied);
+    result.fill(Qt::transparent);
+    QPainter p(&result);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    p.translate(sz.width() / 2.0, sz.height() / 2.0);
+    p.rotate(angleDegrees);
+    p.scale(scale, scale);
+    p.translate(-sz.width() / 2.0, -sz.height() / 2.0);
+    p.drawImage(0, 0, source);
+    p.end();
+    return result;
 }

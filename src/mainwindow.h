@@ -86,7 +86,6 @@ private slots:
     void importLayerFromFile();     // add an image file as a new layer
     void flipActiveLayerHorizontal();
     void flipActiveLayerVertical();
-    QWidget *createCanvasArea();         // canvas + scrollbars (issue #34)
     void showRotateZoomLayerDialog();   // rotate + scale the active layer
     void invertSelection();
 
@@ -127,6 +126,7 @@ private slots:
     void updateImageThumbnail();
 
 private:
+    QWidget *createCanvasArea();   // canvas + scrollbars (issue #34)
     void createMenus();
     // Loads external effect plugins and fills the Effects ▸ Plugins submenu.
     void populatePluginsMenu(QMenu *pluginsMenu);

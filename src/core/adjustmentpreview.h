@@ -9,8 +9,11 @@ class CanvasWidget;
 class AdjustmentPreview : public QObject {
     Q_OBJECT
 public:
+    // `useSelection` false applies the operation to whole layers even when a
+    // selection is active (Layers > Rotate / Zoom works on the full layer).
     AdjustmentPreview(Document *document, CanvasWidget *canvas,
-                      const std::vector<int> &targets, QObject *parent = nullptr);
+                      const std::vector<int> &targets, QObject *parent = nullptr,
+                      bool useSelection = true);
     ~AdjustmentPreview() override;
     // Operations must capture worker-safe values, never live document/UI pointers.
     void request(ImageOperation operation);
